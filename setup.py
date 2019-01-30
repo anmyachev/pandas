@@ -369,7 +369,7 @@ class CheckingBuildExt(build_ext):
                 """.format(src=src))
 
     def build_extensions(self):
-        self.check_cython_extensions(self.extensions)
+        #self.check_cython_extensions(self.extensions)
         build_ext.build_extensions(self)
 
 
@@ -728,6 +728,11 @@ _move_ext = Extension('pandas.util._move',
                       sources=['pandas/util/move.c'],
                       define_macros=macros)
 extensions.append(_move_ext)
+
+_check_ext = Extension('pandas._libs.concat',
+                       depends=[],
+                       sources=['pandas/_libs/src/datetime/concatmodule.c'])
+extensions.append(_check_ext)
 
 # The build cache system does string matching below this point.
 # if you change something, be careful.
