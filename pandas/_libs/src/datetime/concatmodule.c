@@ -3,6 +3,27 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
+static int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject *result)
+{
+	if (item == NULL) {
+		return 0;
+	}
+	if (!PyUnicode_Check(item)) {
+		PyObject *unicode_item = PyUnicode_FromObject(item);
+		Py_DECREF(item);
+		if (unicode_item == NULL) {
+			return 0;
+		}
+		item = unicode_item;
+	}
+	if (PyArray_SETITEM(result, PyArray_GETPTR1(result, index), item) != 0) {
+		PyErr_SetString(PyExc_RuntimeError, "Cannot set resulting item");
+		Py_DECREF(item);
+		return 0;
+	}
+	return 1;
+}
+
 static PyObject*
 concat_date_cols(PyObject *self, PyObject *args)
 {
@@ -13,7 +34,7 @@ concat_date_cols(PyObject *self, PyObject *args)
         return NULL;
     }
     if (!PySequence_Check(sequence)) {
-        PyErr_SetString(PyExc_TypeError, "argument for function concat_date_cols must be sequence");
+        PyErr_SetString(PyExc_TypeError, "argument must be sequence");
         return NULL;
     }
 
@@ -23,54 +44,47 @@ concat_date_cols(PyObject *self, PyObject *args)
     }
 
     if (sequence_size == 1) {
-        Py_ssize_t first_elem = 0;
-        PyObject* array = PySequence_GetItem(sequence, first_elem);
+        PyObject* array = PySequence_GetItem(sequence, 0);
         if (array == NULL) {
             return NULL;
         }
-        PyObject* fast_array = PySequence_Fast(array, "elements of input sequence must be sequence");
-        if (fast_array == NULL) {
-            return NULL;  //PySequence_Fast set message, which in second argument
-        }
+		npy_intp dims[1];
+		Py_ssize_t array_size = PySequence_Size(array);
+		if (array_size == -1) {
+			Py_DECREF(array);
+			return NULL;
+		}
+		dims[0] = array_size;
 
-        Py_ssize_t array_size = PySequence_Fast_GET_SIZE(fast_array);
-        PyObject* temp = NULL;
-        int result = 0;
+		PyArrayObject *result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
+		if (result == NULL) {
+			Py_DECREF(array);
+			return NULL;
+		}
 
-        for (Py_ssize_t i = 0; i < array_size; ++i) {
-            temp = PySequence_Fast_GET_ITEM(fast_array, i);
-            if (temp == NULL) {
-                return NULL;
-            }
-            if (!PyUnicode_Check(temp)) {
-                temp = PyUnicode_FromObject(temp);
-                if (temp == NULL) {
-                    return NULL;
-                }
-                result = PySequence_SetItem(array, i, temp);
-                if (result == -1) {
-                    PyErr_SetString(PyExc_RuntimeError, "error at unicode item set");
-                    return NULL;
-                }
-                Py_DECREF(temp);
-            }
-        }
-        Py_DECREF(array);
-        return PyArray_FROM_O(fast_array);
-        /*PyArrayObject *array = (PyArrayObject *) PyArray_ContiguousFromAny(temp, NPY_OBJECT, 1, 1);
-        if (PyErr_Occurred() != NULL) {
-            return NULL;
-        }
-        Py_ssize_t array_size = PyArray_SIZE(array);
-        for (Py_ssize_t i = 0; i < array_size; ++i) {
-            PyArray_SETITEM(array, PyArray_GETPTR1(array, i), PyUnicode_FromObject(PyArray_GETITEM(array, (char*)PyArray_GETPTR1(array, i))));
-        }
-        if (PyErr_Occurred() != NULL) {
-            return NULL;
-        }
-        else { 
-            return (PyObject*)array;
-        }*/
+		/*if (PyArray_CheckExact(array)) {
+			// fast case
+		} else*/ {
+			PyObject* fast_array = PySequence_Fast(array, "elements of input sequence must be sequence");
+			if (fast_array == NULL) {
+				Py_DECREF(result);
+				Py_DECREF(array);
+				return NULL;  //PySequence_Fast set message, which in second argument
+			}
+
+			for (Py_ssize_t i = 0; i < array_size; ++i) {
+				PyObject* item = PySequence_Fast_GET_ITEM(fast_array, i);
+				if (!convert_and_set_item(item, i, result)) {
+					Py_DECREF(result);
+					Py_DECREF(array);
+					Py_DECREF(fast_array);
+					return NULL;
+				}
+			}
+			Py_DECREF(array);
+			Py_DECREF(fast_array);
+			return (PyObject*)result;
+		}
     } else {
         PyArrayObject ** arrays;
         Py_ssize_t min_array_size = PyArray_SIZE(*arrays);
