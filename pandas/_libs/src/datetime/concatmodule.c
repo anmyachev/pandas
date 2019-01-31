@@ -8,13 +8,18 @@ static int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject 
 	if (item == NULL) {
 		return 0;
 	}
+#if PY_MAJOR_VERSION == 2
+	if (!PyString_Check(item) && !PyUnicode_Check(item)) {
+		PyObject *str_item = PyObject_Str(item);
+#else
 	if (!PyUnicode_Check(item)) {
-		PyObject *unicode_item = PyUnicode_FromObject(item);
+		PyObject *str_item = PyUnicode_FromObject(item);
+#endif
 		Py_DECREF(item);
-		if (unicode_item == NULL) {
+		if (str_item == NULL) {
 			return 0;
 		}
-		item = unicode_item;
+		item = str_item;
 	}
 	if (PyArray_SETITEM(result, PyArray_GETPTR1(result, index), item) != 0) {
 		PyErr_SetString(PyExc_RuntimeError, "Cannot set resulting item");
