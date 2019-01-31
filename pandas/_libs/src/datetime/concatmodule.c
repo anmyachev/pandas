@@ -63,8 +63,9 @@ concat_date_cols(PyObject *self, PyObject *args)
 		}
 
 		if (PyArray_CheckExact(array)) {
+			PyArrayObject *ndarray = (PyArrayObject*)array;
 			for (Py_ssize_t i = 0; i < array_size; ++i) {
-				PyObject *item = PyArray_GETITEM(array, PyArray_GETPTR1((PyArrayObject*)array, i));
+				PyObject *item = PyArray_GETITEM(ndarray, PyArray_GETPTR1(ndarray, i));
 				if (!convert_and_set_item(item, i, result)) {
 					Py_DECREF(result);
 					Py_DECREF(array);
