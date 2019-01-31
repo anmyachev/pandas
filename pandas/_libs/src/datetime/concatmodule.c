@@ -62,9 +62,16 @@ concat_date_cols(PyObject *self, PyObject *args)
 			return NULL;
 		}
 
-		/*if (PyArray_CheckExact(array)) {
-			// fast case
-		} else*/ {
+		if (PyArray_CheckExact(array)) {
+			for (Py_ssize_t i = 0; i < array_size; ++i) {
+				PyObject *item = PyArray_GETITEM(array, PyArray_GETPTR1(array, i));
+				if (!convert_and_set_item(item, i, result)) {
+					Py_DECREF(result);
+					Py_DECREF(array);
+					return NULL;
+				}
+			}
+		} else {
 			PyObject* fast_array = PySequence_Fast(array, "elements of input sequence must be sequence");
 			if (fast_array == NULL) {
 				Py_DECREF(result);
@@ -81,11 +88,11 @@ concat_date_cols(PyObject *self, PyObject *args)
 					return NULL;
 				}
 			}
-			Py_DECREF(array);
 			Py_DECREF(fast_array);
-			return (PyObject*)result;
 		}
-    } else {
+		Py_DECREF(array);
+		return (PyObject*)result;
+	} else {
         PyArrayObject ** arrays;
         Py_ssize_t min_array_size = PyArray_SIZE(*arrays);
         for (Py_ssize_t i = 0; i < sequence_size; ++i) {
