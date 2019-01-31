@@ -21,6 +21,9 @@ from setuptools import setup, Command, find_packages
 import versioneer
 cmdclass = versioneer.get_cmdclass()
 
+def is_debug_symbols_requested():
+    # TODO: make a setup.py parameter
+    return True
 
 def is_platform_windows():
     return sys.platform == 'win32' or sys.platform == 'cygwin'
@@ -238,6 +241,7 @@ class CleanCommand(Command):
         ujson_lib = pjoin(base, 'ujson', 'lib')
         self._clean_exclude = [pjoin(dt, 'np_datetime.c'),
                                pjoin(dt, 'np_datetime_strings.c'),
+                               pjoin(dt, 'concatmodule.c'),
                                pjoin(parser, 'tokenizer.c'),
                                pjoin(parser, 'io.c'),
                                pjoin(ujson_python, 'ujson.c'),
@@ -464,6 +468,22 @@ if linetrace:
 macros.append(('NPY_NO_DEPRECATED_API', '0'))
 
 
+if is_platform_windows():
+    extra_compile_args = []
+    debug_compile_args = ['/Z7']
+    debug_link_args = ['/DEBUG']
+else:
+    # args to ignore warnings
+    extra_compile_args = ['-Wno-unused-function']
+    debug_compile_args = ['-g']
+    debug_link_args = []
+
+extra_link_args = []
+
+if is_debug_symbols_requested():
+    extra_compile_args.extend(debug_compile_args)
+    extra_link_args.extend(debug_link_args)
+
 # ----------------------------------------------------------------------
 # Specification of Dependencies
 
@@ -688,7 +708,8 @@ for name, data in ext_data.items():
                     include_dirs=include,
                     language=data.get('language', 'c'),
                     define_macros=data.get('macros', macros),
-                    extra_compile_args=extra_compile_args)
+                    extra_compile_args=extra_compile_args,
+                    extra_link_args=extra_link_args)
 
     extensions.append(obj)
 
@@ -715,6 +736,7 @@ ujson_ext = Extension('pandas._libs.json',
                                     'pandas/_libs/src/datetime'],
                       extra_compile_args=(['-D_GNU_SOURCE'] +
                                           extra_compile_args),
+                      extra_link_args=extra_link_args,
                       define_macros=macros)
 
 
@@ -726,12 +748,17 @@ extensions.append(ujson_ext)
 _move_ext = Extension('pandas.util._move',
                       depends=[],
                       sources=['pandas/util/move.c'],
+                      extra_compile_args=extra_compile_args,
+                      extra_link_args=extra_link_args,
                       define_macros=macros)
 extensions.append(_move_ext)
 
 _check_ext = Extension('pandas._libs.concat',
                        depends=[],
-                       sources=['pandas/_libs/src/datetime/concatmodule.c'])
+                       sources=['pandas/_libs/src/datetime/concatmodule.c'],
+                       extra_compile_args=extra_compile_args,
+                       extra_link_args=extra_link_args,
+                       define_macros=macros)
 extensions.append(_check_ext)
 
 # The build cache system does string matching below this point.
