@@ -3,7 +3,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
-static int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject *result)
+static inline int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject *result)
 {
 	if (item == NULL) {
 		return 0;
