@@ -99,17 +99,84 @@ concat_date_cols(PyObject *self, PyObject *args)
 		Py_DECREF(array);
 		return (PyObject*)result;
 	} else {
-        PyArrayObject ** arrays;
-        Py_ssize_t min_array_size = PyArray_SIZE(*arrays);
+        PyObject **arrays = (PyObject**) malloc(sizeof(PyObject*) * sequence_size);
+		PyObject* array = NULL;
+		PyObject* fast_array = NULL;
+        Py_ssize_t min_array_size = 0;
         for (Py_ssize_t i = 0; i < sequence_size; ++i) {
-            *(arrays + i) = (PyArrayObject *) PyArray_ContiguousFromAny(PySequence_GetItem(sequence, i), NPY_OBJECT, 1, 1);
+			array = PySequence_GetItem(sequence, i);
+			if (array == NULL) {
+				for (Py_ssize_t j = 0; j < i; ++j)
+					Py_DECREF(arrays[j]);
+				free(arrays);
+            	return NULL;
+        	}
+			fast_array = PySequence_Fast(array, "elements of input sequence must be sequence");
+			if (fast_array == NULL) {
+				Py_DECREF(array);
+				for (Py_ssize_t j = 0; j < i; ++j)
+					Py_DECREF(arrays[j]);
+				free(arrays);
+				return NULL;  //PySequence_Fast set message, which in second argument
+			}
+			Py_DECREF(array);
+			
+			Py_ssize_t array_size = PySequence_Fast_GET_SIZE(fast_array);
+			if (min_array_size != 0) {
+				min_array_size = (array_size < min_array_size)? array_size: min_array_size;
+			} else {
+				min_array_size = array_size;
+			}
+            arrays[i]  = fast_array;
+        }
+		npy_intp dims[1];
+		dims[0] = min_array_size;
+		PyArrayObject *result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
+		if (result == NULL) {
+			for (Py_ssize_t i = 0; i < sequence_size; ++i)
+				Py_DECREF(arrays[i]);
+			free(arrays);
+			return NULL;
+		}
 
-        }
-        if (PyErr_Occurred() != NULL) {
-            return NULL;
-        }
-        return NULL;
-        //for (Py_ssize_t i = 1; i < sequence_size)
+		PyObject* separator = PyUnicode_FromFormat(" ");
+		if (separator == NULL) {
+			for (Py_ssize_t i = 0; i < sequence_size; ++i)
+				Py_DECREF(arrays[i]);
+			free(arrays);
+			return NULL;
+		}
+		PyObject* item = NULL;
+		for (Py_ssize_t i = 0; i < min_array_size; ++i) {
+			PyObject* result_sequence = PyList_New(0);
+			for (Py_ssize_t j = 0; j < sequence_size; ++j) {
+				item = PySequence_Fast_GET_ITEM(arrays[j], i);
+				if (item == NULL) {
+					return NULL;
+				}
+				int res = PyList_Append(result_sequence, item);
+				if (res == -1) {
+					return NULL;
+				}
+			}
+			PyObject* result_string = PyUnicode_Join(separator, result_sequence);
+			if (result_string == NULL) {
+				return NULL;
+			}
+			if (PyArray_SETITEM(result, PyArray_GETPTR1(result, i), result_string) != 0) {
+				PyErr_SetString(PyExc_RuntimeError, "Cannot set resulting item");
+				Py_DECREF(result);
+				Py_DECREF(result_string);
+				for (Py_ssize_t i = 0; i < sequence_size; ++i)
+					Py_DECREF(arrays[i]);
+				free(arrays);
+				return NULL;
+			}
+		}
+		for (Py_ssize_t i = 0; i < sequence_size; ++i)
+			Py_DECREF(arrays[i]);
+		free(arrays);
+        return (PyObject*)result;
     }
 
 }
