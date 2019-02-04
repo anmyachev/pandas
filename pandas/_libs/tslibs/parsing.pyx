@@ -8,6 +8,9 @@ import time
 
 from cpython.datetime cimport datetime
 
+from cpython.datetime cimport (datetime_new,
+                               PyDateTime_IMPORT)
+PyDateTime_IMPORT
 
 import numpy as np
 
@@ -43,6 +46,7 @@ class DateParseError(ValueError):
 
 _DEFAULT_DATETIME = datetime(1, 1, 1).replace(hour=0, minute=0,
                                               second=0, microsecond=0)
+_DEFAULT_TZINFO = _DEFAULT_DATETIME.tzinfo
 
 cdef:
     object _TIMEPAT = re.compile(r'^([01]?[0-9]|2[0-3]):([0-5][0-9])')
@@ -89,7 +93,7 @@ def parse_datetime_string(date_string, freq=None, dayfirst=False,
         return dt
 
     try:
-        dt, _, _ = _parse_dateabbr_string(date_string, _DEFAULT_DATETIME, freq)
+        dt, _, _ = _parse_dateabbr_string(date_string, None, freq)
         return dt
     except DateParseError:
         raise
@@ -169,7 +173,7 @@ cdef parse_datetime_string_with_reso(date_string, freq=None, dayfirst=False,
         raise ValueError('Given date string not likely a datetime.')
 
     try:
-        return _parse_dateabbr_string(date_string, _DEFAULT_DATETIME, freq)
+        return _parse_dateabbr_string(date_string, None, freq)
     except DateParseError:
         raise
     except ValueError:
@@ -204,6 +208,11 @@ cpdef bint _does_string_look_like_datetime(object date_string):
 
     return True
 
+cdef inline object _make_year_month_to_date(int year, int month, object default):
+    if default is None:
+        return datetime_new(year, month, 1, 0, 0, 0, 0, _DEFAULT_TZINFO)
+    else:
+        return default.replace(month=month, year=year)
 
 cdef inline object _parse_dateabbr_string(object date_string, object default,
                                           object freq):
@@ -226,7 +235,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     if date_len == 4:
         # parse year only like 2000
         try:
-            ret = default.replace(year=int(date_string))
+            ret = _make_year_month_to_date(int(date_string), 1, default)
             return ret, ret, 'year'
         except ValueError:
             pass
@@ -283,7 +292,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
             else:
                 month = (quarter - 1) * 3 + 1
 
-            ret = default.replace(year=year, month=month)
+            ret = _make_year_month_to_date(year, month, default)
             return ret, ret, 'quarter'
 
     except DateParseError:
@@ -296,7 +305,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
         year = int(date_string[:4])
         month = int(date_string[4:6])
         try:
-            ret = default.replace(year=year, month=month)
+            ret = _make_year_month_to_date(year, month, default)
             return ret, ret, 'month'
         except ValueError:
             pass
@@ -312,7 +321,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
             month = int(date_string[5:])
 
         try:
-            ret = default.replace(month=month, year=year)
+            ret = _make_year_month_to_date(year, month, default)
             return ret, ret, 'month'
         except ValueError:
             pass
