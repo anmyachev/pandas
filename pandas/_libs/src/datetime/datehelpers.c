@@ -222,25 +222,51 @@ concat_date_cols(PyObject *self, PyObject *args)
 
 }
 
+// cdef set _not_datelike_strings = {'a', 'A', 'm', 'M', 'p', 'P', 't', 'T'}
+
+static PyObject* does_string_look_like_datetime(PyObject* unused, PyObject* arg) {
+    /* 
+
+cpdef bint _does_string_look_like_datetime(object date_string):
+    if date_string.startswith('0'):
+        # Strings starting with 0 are more consistent with a
+        # date-like string than a number
+        return True
+
+    try:
+        if float(date_string) < 1000:
+            return False
+    except ValueError:
+        pass
+
+    if date_string in _not_datelike_strings:
+        return False
+
+    return True
+    */
+    return NULL;
+}
+
 static PyMethodDef module_methods[] =
 {
      /* name from python, name in C-file, ..., __doc__ string of method */
-     {"concat_date_cols", concat_date_cols, METH_VARARGS, "concat date cols and return numpy array"},
+     {"concat_date_cols", concat_date_cols, METH_VARARGS, "concatenates date cols and returns numpy array"},
+     {"does_string_look_like_datetime", does_string_look_like_datetime, METH_O, "checks if string looks like a datetime"},
      {NULL, NULL, 0, NULL}
 };
 
 static struct PyModuleDef moduledef =
 {
     PyModuleDef_HEAD_INIT,
-    "concat",               /* name of module */
-    "concat date cols and return numpy array",  /* module documentation, may be NULL */
+    "datehelpers",               /* name of module */
+    "helpers for datetime structures manipulation",  /* module documentation, may be NULL */
     -1,                     /* size of per-interpreter state of the module,
                                or -1 if the module keeps state in global variables. */
     module_methods
 };
 
 PyMODINIT_FUNC
-PyInit_concat(void)
+PyInit_datehelpers(void)
 {
     import_array();
     return PyModule_Create(&moduledef);

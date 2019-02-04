@@ -241,7 +241,7 @@ class CleanCommand(Command):
         ujson_lib = pjoin(base, 'ujson', 'lib')
         self._clean_exclude = [pjoin(dt, 'np_datetime.c'),
                                pjoin(dt, 'np_datetime_strings.c'),
-                               pjoin(dt, 'concatmodule.c'),
+                               pjoin(dt, 'datehelpers.c'),
                                pjoin(parser, 'tokenizer.c'),
                                pjoin(parser, 'io.c'),
                                pjoin(ujson_python, 'ujson.c'),
@@ -755,7 +755,7 @@ extensions.append(_move_ext)
 
 _check_ext = Extension('pandas._libs.concat',
                        depends=[],
-                       sources=['pandas/_libs/src/datetime/concatmodule.c'],
+                       sources=['pandas/_libs/src/datetime/datehelpers.c'],
                        extra_compile_args=extra_compile_args,
                        extra_link_args=extra_link_args,
                        define_macros=macros)
