@@ -48,9 +48,12 @@ concat_date_cols(PyObject *self, PyObject *args)
     sequence_size = PySequence_Size(sequence);
     if (sequence_size == -1) {
         return NULL;
-    }
-
-    if (sequence_size == 1) {
+    } else if (sequence_size == 0) {
+        npy_intp dims[1];
+        dims[0] = 0;
+        PyArrayObject *result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
+        return (PyObject*)result;
+    } else if (sequence_size == 1) {
         PyObject* array = PySequence_GetItem(sequence, 0);
         if (array == NULL) {
             return NULL;
