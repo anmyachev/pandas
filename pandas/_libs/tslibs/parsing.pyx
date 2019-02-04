@@ -300,6 +300,22 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
             return ret, ret, 'month'
         except ValueError:
             pass
+    
+    separators = ' /\\-'
+    if date_len == 7:
+        #'%m %Y', '%m/%Y', '%m\%Y', '%m-%Y', '%Y %m', '%Y/%m', '%Y\%m', '%Y-%m'
+        if date_string[2]  in separators:
+            month = int(date_string[:2])
+            year = int(date_string[3:])
+        else:
+            year = int(date_string[:4])
+            month = int(date_string[5:])
+
+        try:
+            ret = default.replace(month=month, year=year)
+            return ret, ret, 'month'
+        except ValueError:
+            pass
 
     for pat in ['%Y-%m', '%m-%Y', '%b %Y', '%b-%Y']:
         try:
