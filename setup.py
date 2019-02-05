@@ -242,6 +242,7 @@ class CleanCommand(Command):
         self._clean_exclude = [pjoin(dt, 'np_datetime.c'),
                                pjoin(dt, 'np_datetime_strings.c'),
                                pjoin(dt, 'datehelpers.c'),
+                               pjoin(dt, 'opt_date_parse.c'),
                                pjoin(parser, 'tokenizer.c'),
                                pjoin(parser, 'io.c'),
                                pjoin(ujson_python, 'ujson.c'),
@@ -630,6 +631,8 @@ ext_data = {
         'sources': np_datetime_sources},
     '_libs.tslibs.parsing': {
         'pyxfile': '_libs/tslibs/parsing',
+        'depends': ['pandas/_libs/src/datetime/opt_date_parse.h'],
+        'sources': ['pandas/_libs/src/datetime/opt_date_parse.c'],
         'include': []},
     '_libs.tslibs.period': {
         'pyxfile': '_libs/tslibs/period',

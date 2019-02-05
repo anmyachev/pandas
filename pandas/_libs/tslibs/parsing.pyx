@@ -40,6 +40,10 @@ from pandas._libs.tslibs.nattype import nat_strings, NaT
 from pandas._libs.datehelpers import (does_string_look_like_datetime,
                                       parse_month_year_date)
 
+#cdef extern from "../src/datetime/opt_date_parse.h":
+ #   int parse_date_quarter(object string, int* year, int* quarter)
+
+
 # ----------------------------------------------------------------------
 # Constants
 
@@ -208,6 +212,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     cdef:
         object ret
         int year, quarter = -1, month, mnum, date_len
+        #Py_ssize_t i
 
     # special handling for possibilities eg, 2Q2005, 2Q05, 2005Q1, 05Q1
     assert isinstance(date_string, (str, unicode))
@@ -232,32 +237,36 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     try:
         if 4 <= date_len <= 7:
             i = date_string.index('Q', 1, 6)
-            if i == 1:
-                quarter = int(date_string[0])
-                if date_len == 4 or (date_len == 5
-                                     and date_string[i + 1] == '-'):
-                    # r'(\d)Q-?(\d\d)')
-                    year = 2000 + int(date_string[-2:])
-                elif date_len == 6 or (date_len == 7
-                                       and date_string[i + 1] == '-'):
-                    # r'(\d)Q-?(\d\d\d\d)')
-                    year = int(date_string[-4:])
-                else:
-                    raise ValueError
-            elif i == 2 or i == 3:
-                # r'(\d\d)-?Q(\d)'
-                if date_len == 4 or (date_len == 5
-                                     and date_string[i - 1] == '-'):
-                    quarter = int(date_string[-1])
-                    year = 2000 + int(date_string[:2])
-                else:
-                    raise ValueError
-            elif i == 4 or i == 5:
-                if date_len == 6 or (date_len == 7
-                                     and date_string[i - 1] == '-'):
-                    # r'(\d\d\d\d)-?Q(\d)'
-                    quarter = int(date_string[-1])
-                    year = int(date_string[:4])
+            #i = index_Q(date_string, 1, 6)
+            if i > 0:
+                if i == 1:
+                    quarter = int(date_string[0])
+                    if date_len == 4 or (date_len == 5
+                                        and date_string[i + 1] == '-'):
+                        # r'(\d)Q-?(\d\d)')
+                        year = 2000 + int(date_string[-2:])
+                    elif date_len == 6 or (date_len == 7
+                                        and date_string[i + 1] == '-'):
+                        # r'(\d)Q-?(\d\d\d\d)')
+                        year = int(date_string[-4:])
+                    else:
+                        raise ValueError
+                elif i == 2 or i == 3:
+                    # r'(\d\d)-?Q(\d)'
+                    if date_len == 4 or (date_len == 5
+                                        and date_string[i - 1] == '-'):
+                        quarter = int(date_string[-1])
+                        year = 2000 + int(date_string[:2])
+                    else:
+                        raise ValueError
+                elif i == 4 or i == 5:
+                    if date_len == 6 or (date_len == 7
+                                        and date_string[i - 1] == '-'):
+                        # r'(\d\d\d\d)-?Q(\d)'
+                        quarter = int(date_string[-1])
+                        year = int(date_string[:4])
+                    else:
+                        raise ValueError
                 else:
                     raise ValueError
 
@@ -275,14 +284,14 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
                            'freq: {freq}'.format(freq=freq))
                     raise DateParseError(msg)
 
-                month = (mnum + (quarter - 1) * 3) % 12 + 1
-                if month > mnum:
-                    year -= 1
-            else:
-                month = (quarter - 1) * 3 + 1
+                    month = (mnum + (quarter - 1) * 3) % 12 + 1
+                    if month > mnum:
+                        year -= 1
+                else:
+                    month = (quarter - 1) * 3 + 1
 
-            ret = _make_year_month_to_date(year, month, default)
-            return ret, ret, 'quarter'
+                ret = _make_year_month_to_date(year, month, default)
+                return ret, ret, 'quarter'
 
     except DateParseError:
         raise
