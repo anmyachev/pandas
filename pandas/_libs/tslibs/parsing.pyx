@@ -37,7 +37,8 @@ from dateutil.parser import parse as du_parse
 from pandas._libs.tslibs.ccalendar import MONTH_NUMBERS
 from pandas._libs.tslibs.nattype import nat_strings, NaT
 
-from pandas._libs.datehelpers import does_string_look_like_datetime
+from pandas._libs.datehelpers import (does_string_look_like_datetime,
+                                      parse_month_year_date)
 
 # ----------------------------------------------------------------------
 # Constants
@@ -298,14 +299,14 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
         except ValueError:
             pass
     
-    year, month =  pandas._libs.concat.parsing_date(date_string)
     try:
+        year, month = parse_month_year_date(date_string)
         ret = _make_year_month_to_date(year, month, default)
         return ret, ret, 'month'
     except ValueError:
-       pass
+        pass
 
-    for pat in ['%Y-%m', '%m-%Y', '%b %Y', '%b-%Y']:
+    for pat in ['%b %Y', '%b-%Y']:
         try:
             ret = datetime.strptime(date_string, pat)
             return ret, ret, 'month'

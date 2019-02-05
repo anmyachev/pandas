@@ -224,8 +224,8 @@ concat_date_cols(PyObject *self, PyObject *args)
     }
 }
 
-static int parse_4digit(const char* s) {
-     char *ch = s;
+static int inline parse_4digit(const char* s) {
+     const char *ch = s;
      int result = 0;
      if (*ch < '0' || *ch > '9') return -1;
      result += (int)(*ch - '0') * 1000;
@@ -241,8 +241,8 @@ static int parse_4digit(const char* s) {
      return result;
 }
 
-static int parse_2digit(const char* s) {
-    char *ch = s;
+static int inline parse_2digit(const char* s) {
+    const char *ch = s;
     int result = 0;
     if (*ch < '0' || *ch > '9') return -1;
     result += (int)(*ch - '0') * 10;
@@ -252,18 +252,18 @@ static int parse_2digit(const char* s) {
     return result;
 }
 
-#define CHECK_AND_RAISE_EXCEPTION(value)          \
-    if ((value) == -1) {                          \
-        PyErr_SetString(PyExc_ValueError, NULL);  \
-        return NULL;                              \
+#define CHECK_AND_RAISE_EXCEPTION(value, msg)   \
+    if ((value) == -1) {                        \
+        PyErr_SetString(PyExc_ValueError, msg); \
+        return NULL;                            \
     }
 
 static char delimiters[4] = " /-\\";
 
-static PyObject* parsing_date(PyObject *self, PyObject *args)
+static PyObject* parse_month_year_date(PyObject *self, PyObject *args)
 {
     const char* input_string;
-    int string_size = 0;
+    int string_size;
     int year, month;
     if (!PyArg_ParseTuple(args, "s#", &input_string, &string_size)) {
         return NULL;
@@ -273,17 +273,20 @@ static PyObject* parsing_date(PyObject *self, PyObject *args)
         const int delim2 = input_string[4];
         if (strchr(delimiters, delim1) != NULL) {
             month = parse_2digit(input_string);
-            CHECK_AND_RAISE_EXCEPTION(month);
+            CHECK_AND_RAISE_EXCEPTION(month, "month is not an integer");
             year = parse_4digit(input_string + 3);
-            CHECK_AND_RAISE_EXCEPTION(year);
-        } else if (strchr(delimiters, delim2) != NULL){
-            month = parse_4digit(input_string);
-            CHECK_AND_RAISE_EXCEPTION(month);
-            year = parse_2digit(input_string + 5);
-            CHECK_AND_RAISE_EXCEPTION(year);
+            CHECK_AND_RAISE_EXCEPTION(year, "year is not an integer");
+        } else if (strchr(delimiters, delim2) != NULL) {
+            year = parse_4digit(input_string);
+            CHECK_AND_RAISE_EXCEPTION(year, "year is not an integer");
+            month = parse_2digit(input_string + 5);
+            CHECK_AND_RAISE_EXCEPTION(month, "month is not an integer");
+        } else {
+            PyErr_SetString(PyExc_ValueError, "missing month-year separator");
+            return NULL;
         }
     } else {
-        printf("not implemented");
+        PyErr_SetString(PyExc_ValueError, "Parsing of string of this length not supported");
         return NULL;
     }
 
@@ -376,7 +379,7 @@ static PyMethodDef module_methods[] =
      /* name from python, name in C-file, ..., __doc__ string of method */
      {"concat_date_cols", concat_date_cols, METH_VARARGS, "concatenates date cols and returns numpy array"},
      {"does_string_look_like_datetime", does_string_look_like_datetime, METH_O, "checks if string looks like a datetime"},
-     {"parsing_date", parsing_date, METH_VARARGS, "parsing and convert date to number"},
+     {"parse_month_year_date", parse_month_year_date, METH_VARARGS, "parses date string (MM/YYYY or YYYY/MM) to month and year"},
      {NULL, NULL, 0, NULL}
 };
 
