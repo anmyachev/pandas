@@ -17,6 +17,7 @@ import numpy as np
 import six
 from six import binary_type, text_type
 
+import pandas._libs.concat
 # Avoid import from outside _libs
 if sys.version_info.major == 2:
     from StringIO import StringIO
@@ -297,21 +298,12 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
         except ValueError:
             pass
     
-    separators = ' /\\-'
-    if date_len == 7:
-        #'%m %Y', '%m/%Y', '%m\%Y', '%m-%Y', '%Y %m', '%Y/%m', '%Y\%m', '%Y-%m'
-        if date_string[2]  in separators:
-            month = int(date_string[:2])
-            year = int(date_string[3:])
-        else:
-            year = int(date_string[:4])
-            month = int(date_string[5:])
-
-        try:
-            ret = _make_year_month_to_date(year, month, default)
-            return ret, ret, 'month'
-        except ValueError:
-            pass
+    year, month =  pandas._libs.concat.parsing_date(date_string)
+    try:
+        ret = _make_year_month_to_date(year, month, default)
+        return ret, ret, 'month'
+    except ValueError:
+       pass
 
     for pat in ['%Y-%m', '%m-%Y', '%b %Y', '%b-%Y']:
         try:
