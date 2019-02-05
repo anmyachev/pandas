@@ -1,5 +1,39 @@
 #include "opt_date_parse.h"
 
+static int inline parse_4digit(const char* s) {
+     const char *ch = s;
+     int result = 0;
+     if (*ch < '0' || *ch > '9') return -1;
+     result += (int)(*ch - '0') * 1000;
+     ch++;
+     if (*ch < '0' || *ch > '9') return -1;
+     result += (int)(*ch - '0') * 100;
+     ch++;
+     if (*ch < '0' || *ch > '9') return -1;
+     result += (int)(*ch - '0') * 10;
+     ch++;
+     if (*ch < '0' || *ch > '9') return -1;
+     result += (int)(*ch - '0');
+     return result;
+}
+
+static int inline parse_2digit(const char* s) {
+    const char *ch = s;
+    int result = 0;
+    if (*ch < '0' || *ch > '9') return -1;
+    result += (int)(*ch - '0') * 10;
+    ch++;
+    if (*ch < '0' || *ch > '9') return -1;
+    result += (int)(*ch - '0');
+    return result;
+}
+
+static int inline parse_1digit(const char* s) {
+    if (*s < '0' || *s > '9') return -1;
+    return (int)(*s - '0');
+}
+
+
 Py_ssize_t index_Q(const char* string, Py_ssize_t start_position, Py_ssize_t end_position, Py_ssize_t length) {
     char* buf = NULL;
     char* ch = NULL;
@@ -72,3 +106,38 @@ int parse_date_quarter(PyObject* string, int* year, int* quarter) {
                     year = int(date_string[:4])
                 else:
                     raise ValueError*/
+
+int does_string_look_like_time(PyObject* string)
+{
+    char* buf;
+    Py_ssize_t length;
+    int hour, minute;
+#if PY_MAJOR_VERSION == 2
+#error Implement me
+#else
+    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+        // not a string, so doesn't look like time
+        return 0;
+    }
+    buf = PyUnicode_DATA(string);
+    length = PyUnicode_GET_LENGTH(string);
+#endif
+    if (length < 4) {
+        // h:MM doesn't fit in, not a time
+        return 0;
+    }
+    if (buf[1] == ':') {
+        // h:MM format
+        hour = parse_1digit(buf);
+        minute = parse_2digit(&buf[2]);
+    } else if (buf[2] == ':') {
+        // HH:MM format
+        hour = parse_2digit(buf);
+        minute = parse_2digit(&buf[3]);
+    } else {
+        // not a time
+        return 0;
+    }
+
+    return (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) ? 1 : 0;
+}

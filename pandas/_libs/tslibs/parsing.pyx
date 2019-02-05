@@ -40,7 +40,8 @@ from pandas._libs.tslibs.nattype import nat_strings, NaT
 from pandas._libs.datehelpers import (does_string_look_like_datetime,
                                       parse_month_year_date)
 
-#cdef extern from "../src/datetime/opt_date_parse.h":
+cdef extern from "../src/datetime/opt_date_parse.h":
+    int does_string_look_like_time(object string)
  #   int parse_date_quarter(object string, int* year, int* quarter)
 
 
@@ -55,11 +56,6 @@ class DateParseError(ValueError):
 _DEFAULT_DATETIME = datetime(1, 1, 1).replace(hour=0, minute=0,
                                               second=0, microsecond=0)
 _DEFAULT_TZINFO = _DEFAULT_DATETIME.tzinfo
-
-cdef:
-    object _TIMEPAT = re.compile(r'^([01]?[0-9]|2[0-3]):([0-5][0-9])')
-
-    set _not_datelike_strings = {'a', 'A', 'm', 'M', 'p', 'P', 't', 'T'}
 
 # ----------------------------------------------------------------------
 
@@ -94,7 +90,7 @@ def parse_datetime_string(date_string, freq=None, dayfirst=False,
     if not _does_string_look_like_datetime(date_string):
         raise ValueError('Given date string not likely a datetime.')
 
-    if _TIMEPAT.match(date_string):
+    if does_string_look_like_time(date_string):
         # use current datetime as default, not pass _DEFAULT_DATETIME
         dt = du_parse(date_string, dayfirst=dayfirst,
                       yearfirst=yearfirst, **kwargs)
