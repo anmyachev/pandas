@@ -3,6 +3,9 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
+#include <locale.h>
+#include <string.h>
+
 static inline int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject *result)
 {
     int needs_decref = 0;
@@ -222,29 +225,85 @@ concat_date_cols(PyObject *self, PyObject *args)
 
 }
 
-// cdef set _not_datelike_strings = {'a', 'A', 'm', 'M', 'p', 'P', 't', 'T'}
+static char not_datelike[sizeof(char) * 256];
 
 static PyObject* does_string_look_like_datetime(PyObject* unused, PyObject* arg) {
-    /* 
+    PyObject* str = NULL;
+    char* buf = NULL;
+    Py_ssize_t length = -1;
+    int result = 1;
 
-cpdef bint _does_string_look_like_datetime(object date_string):
-    if date_string.startswith('0'):
-        # Strings starting with 0 are more consistent with a
-        # date-like string than a number
-        return True
+#if PY_MAJOR_VERSION == 2
+    if (!PyString_CheckExact(arg)) {
+        if (!PyUnicode_CheckExact(arg)) {
+            // arg is not a string, so it's certainly not a datetime-looking string
+            Py_RETURN_FALSE;
+        }
+        str = PyObject_Str(arg);
+        if (str == NULL) return NULL;
+        arg = str;
+    }
+    if (PyString_AsStringAndSize(arg, &buf, &length) == -1) {
+        Py_XDECREF(str);
+        return NULL;
+    }
+#else
+    if (!PyUnicode_CheckExact(arg) || !PyUnicode_IS_READY(arg)) {
+        PyErr_SetString(PyExc_ValueError, "does_string_look_like_datetime expects a string");
+        return NULL;
+    }
+    buf = PyUnicode_DATA(arg);
+    length = PyUnicode_GET_LENGTH(arg);
+#endif
 
-    try:
-        if float(date_string) < 1000:
-            return False
-    except ValueError:
-        pass
+    if (length >= 1) {
+        char first = *buf;
+        if (first == '0') {
+            result = 1;
+        } else if (length == 1 && not_datelike[Py_CHARMASK(first)]) {
+            result = 0;
+        } else {
+            char* dot_pos = strchr(buf, '.');
+            char *to_parse = buf, *end_point = NULL, *to_free = NULL;
+            double parsed;
+            if (dot_pos != NULL) {
+                struct lconv *locale_data = localeconv();
+                const char *decimal_point = locale_data->decimal_point;
+                if (decimal_point[0] != '.' || decimal_point[1] != 0) {
+                    // Python always uses "." as decimal separator, replace with locale-dependent
+                    size_t decimal_len = strlen(decimal_point);
+                    to_free = to_parse = (char*)(malloc(length + strlen(decimal_point)));
+                    if (to_parse == NULL) {
+                        Py_XDECREF(str);
+                        return PyErr_NoMemory();
+                    }
+                    memcpy(to_parse, buf, dot_pos - buf);
+                    memcpy(&to_parse[dot_pos - buf], decimal_point, decimal_len);
+                    memcpy(&to_parse[dot_pos - buf + decimal_len], dot_pos + 1, length - (dot_pos - buf) - 1);
+                }
+            }
 
-    if date_string in _not_datelike_strings:
-        return False
+            errno = 0;
+            parsed = strtod(to_parse, &end_point);
+            if (end_point != to_parse && errno == 0) {
+                // need to check if there's anything left
+                for (; *end_point != 0 && Py_ISSPACE(*end_point); ++end_point);
+                if (*end_point == 0) {
+                    // double parsed okay, now check it
+                    result = (parsed < 1000) ? 1 : 0;
+                }
+            }
 
-    return True
-    */
-    return NULL;
+            free(to_free);
+        }
+    }
+
+    Py_XDECREF(str);
+    if (result) {
+        Py_RETURN_TRUE;
+    } else {
+        Py_RETURN_FALSE;
+    }
 }
 
 static PyMethodDef module_methods[] =
@@ -269,5 +328,12 @@ PyMODINIT_FUNC
 PyInit_datehelpers(void)
 {
     import_array();
+
+    memset(not_datelike, 0, sizeof(not_datelike));
+    not_datelike['a'] = not_datelike['A'] = 1;
+    not_datelike['m'] = not_datelike['M'] = 1;
+    not_datelike['p'] = not_datelike['P'] = 1;
+    not_datelike['t'] = not_datelike['T'] = 1;
+
     return PyModule_Create(&moduledef);
 }

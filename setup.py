@@ -753,7 +753,7 @@ _move_ext = Extension('pandas.util._move',
                       define_macros=macros)
 extensions.append(_move_ext)
 
-_check_ext = Extension('pandas._libs.concat',
+_check_ext = Extension('pandas._libs.datehelpers',
                        depends=[],
                        sources=['pandas/_libs/src/datetime/datehelpers.c'],
                        extra_compile_args=extra_compile_args,

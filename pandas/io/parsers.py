@@ -47,7 +47,7 @@ from pandas.io.common import (
     is_file_like)
 from pandas.io.date_converters import generic_parser
 
-import pandas._libs.concat
+from pandas._libs.datehelpers import concat_date_cols as _concat_date_cols
 
 # BOM character (byte order mark)
 # This exists at the beginning of a file to indicate endianness
@@ -3160,11 +3160,7 @@ def _make_date_converter(date_parser=None, dayfirst=False,
                          infer_datetime_format=False):
     def converter(*date_cols):
         if date_parser is None:
-            #strs = _concat_date_cols(date_cols)
-            #import pdb
-            #pdb.set_trace()
-            #print(pandas._libs.concat.concat_date_cols(date_cols))
-            strs = pandas._libs.concat.concat_date_cols(date_cols)
+            strs = _concat_date_cols(date_cols)
 
             try:
                 return tools.to_datetime(
