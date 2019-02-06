@@ -66,6 +66,8 @@ parse_iso_8601_datetime_noexc(char *str, int len,
                     int *out_local,
                     int *out_tzoffset);
 
+int _string_to_dts_noexc(PyObject* val, pandas_datetimestruct* dts,
+                        int* out_local, int* out_tzoffset);
 /*
  * Provides a string length to use for converting datetime
  * objects with the given local and unit settings.
