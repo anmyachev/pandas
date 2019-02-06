@@ -6,10 +6,8 @@ import sys
 import re
 import time
 
-from cpython.datetime cimport datetime
+from cpython.datetime cimport datetime, datetime_new, PyDateTime_IMPORT
 
-from cpython.datetime cimport (datetime_new,
-                               PyDateTime_IMPORT)
 PyDateTime_IMPORT
 
 import numpy as np
@@ -37,12 +35,13 @@ from dateutil.parser import parse as du_parse
 from pandas._libs.tslibs.ccalendar import MONTH_NUMBERS
 from pandas._libs.tslibs.nattype import nat_strings, NaT
 
-from pandas._libs.datehelpers import (does_string_look_like_datetime,
-                                      parse_month_year_date)
+from pandas._libs.datehelpers import does_string_look_like_datetime
 
 cdef extern from "../src/datetime/opt_date_parse.h":
     int does_string_look_like_time(object string)
- #   int parse_date_quarter(object string, int* year, int* quarter)
+    int parse_date_quarter(object string, int* year, int* quarter)
+    int parse_month_year_date(object string, int* year, int* month)
+    int parse_date_with_freq(object string, object freq, object compare_with_freq, int* year, int* month)
 
 
 # ----------------------------------------------------------------------
@@ -56,6 +55,8 @@ class DateParseError(ValueError):
 _DEFAULT_DATETIME = datetime(1, 1, 1).replace(hour=0, minute=0,
                                               second=0, microsecond=0)
 _DEFAULT_TZINFO = _DEFAULT_DATETIME.tzinfo
+
+COMPARE_WITH_FREQ = "M"
 
 # ----------------------------------------------------------------------
 
@@ -208,7 +209,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     cdef:
         object ret
         int year, quarter = -1, month, mnum, date_len
-        #Py_ssize_t i
+        int result
 
     # special handling for possibilities eg, 2Q2005, 2Q05, 2005Q1, 05Q1
     assert isinstance(date_string, (str, unicode))
@@ -219,7 +220,6 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     if date_string in nat_strings:
         return NaT, NaT, ''
 
-    date_string = date_string.upper()
     date_len = len(date_string)
 
     if date_len == 4:
@@ -229,43 +229,10 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
             return ret, ret, 'year'
         except ValueError:
             pass
-
     try:
         if 4 <= date_len <= 7:
-            i = date_string.index('Q', 1, 6)
-            #i = index_Q(date_string, 1, 6)
-            if i > 0:
-                if i == 1:
-                    quarter = int(date_string[0])
-                    if date_len == 4 or (date_len == 5
-                                        and date_string[i + 1] == '-'):
-                        # r'(\d)Q-?(\d\d)')
-                        year = 2000 + int(date_string[-2:])
-                    elif date_len == 6 or (date_len == 7
-                                        and date_string[i + 1] == '-'):
-                        # r'(\d)Q-?(\d\d\d\d)')
-                        year = int(date_string[-4:])
-                    else:
-                        raise ValueError
-                elif i == 2 or i == 3:
-                    # r'(\d\d)-?Q(\d)'
-                    if date_len == 4 or (date_len == 5
-                                        and date_string[i - 1] == '-'):
-                        quarter = int(date_string[-1])
-                        year = 2000 + int(date_string[:2])
-                    else:
-                        raise ValueError
-                elif i == 4 or i == 5:
-                    if date_len == 6 or (date_len == 7
-                                        and date_string[i - 1] == '-'):
-                        # r'(\d\d\d\d)-?Q(\d)'
-                        quarter = int(date_string[-1])
-                        year = int(date_string[:4])
-                    else:
-                        raise ValueError
-                else:
-                    raise ValueError
-
+            result = parse_date_quarter(date_string, &year, &quarter)
+            if result > 0:
             if not (1 <= quarter <= 4):
                 msg = ('Incorrect quarterly string is given, quarter must be '
                        'between 1 and 4: {dstr}')
@@ -294,23 +261,23 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     except ValueError:
         pass
 
-    if date_len == 6 and (freq == 'M' or
-                          getattr(freq, 'rule_code', None) == 'M'):
-        year = int(date_string[:4])
-        month = int(date_string[4:6])
+    result = parse_date_with_freq(date_string, freq, COMPARE_WITH_FREQ, &year, &month)
+    if result == 0:
         try:
             ret = _make_year_month_to_date(year, month, default)
             return ret, ret, 'month'
         except ValueError:
             pass
     
-    try:
-        year, month = parse_month_year_date(date_string)
-        ret = _make_year_month_to_date(year, month, default)
-        return ret, ret, 'month'
-    except ValueError:
-        pass
+    result = parse_month_year_date(date_string, &year, &month)
+    if result == 0:
+        try: 
+            ret = _make_year_month_to_date(year, month, default)
+            return ret, ret, 'month'
+        except ValueError:
+            pass
 
+    date_string = date_string.upper()
     for pat in ['%b %Y', '%b-%Y']:
         try:
             ret = datetime.strptime(date_string, pat)

@@ -1,4 +1,5 @@
 #include "opt_date_parse.h"
+#include <string.h>
 
 static int inline parse_4digit(const char* s) {
      const char *ch = s;
@@ -34,19 +35,18 @@ static int inline parse_1digit(const char* s) {
 }
 
 
-Py_ssize_t index_Q(const char* string, Py_ssize_t start_position, Py_ssize_t end_position, Py_ssize_t length) {
-    char* buf = NULL;
-    char* ch = NULL;
+int index_Q(const char* string, int start_position, int end_position, int length) {
+    const char* ch = NULL;
 
     if (length > 0) {
         if (start_position > end_position) {
             return -2;
         }
-        if ((start_position < 0 || start_position > length) || (end_position > length)) {
+        if ((start_position < 0) || (end_position > length)) {
             return -3;
         }
-        ch = buf + start_position;
-        for (Py_ssize_t i = start_position; i < end_position; ++i, ++ch) {
+        ch = string + start_position;
+        for (int i = start_position; i < end_position; ++i, ++ch) {
             if ((*ch) == 'Q' ||  (*ch) == 'q') return i;
         }
     }
@@ -54,58 +54,98 @@ Py_ssize_t index_Q(const char* string, Py_ssize_t start_position, Py_ssize_t end
 }
 
 int parse_date_quarter(PyObject* string, int* year, int* quarter) {
-    char* buf = NULL;
-    char* ch = NULL;
-    Py_ssize_t length = -1;
-    Py_ssize_t index;
+    const char* buf = NULL;
+    int length, index;
 
     if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
         return -1;
     }
     buf = PyUnicode_DATA(string);
-    length = PyUnicode_GET_LENGTH(string);
+    length = (int)PyUnicode_GET_LENGTH(string);
 
     index = index_Q(buf, 1, 6, length);
     if (index == 1) {
-        *quarter = buf[0] - '0';
-        //if ((length == 4) || (length == 5))
-    }
-    return 0;
+        *quarter = parse_1digit(buf);
+        if ((length == 4) || ((length == 5) && (buf[index + 1] == '-'))) {
+            // r'(\d)Q-?(\d\d)')
+            *year = 2000 + parse_2digit(buf + length - 2);
+        } else if ((length == 6) || ((length == 7) && (buf[index + 1] == '-'))) {
+            // r'(\d)Q-?(\d\d\d\d)')
+            *year = parse_4digit(buf + length - 4);
+        } else {
+            return -1;
+        }
+    } else if ((index == 2) || (index == 3)){
+        // r'(\d\d)-?Q(\d)'
+        if ((length == 4) || ((length == 5) && (buf[index - 1] == '-'))) {
+            *quarter = parse_1digit(buf + length - 1);
+            *year = 2000 + parse_2digit(buf + length - 2);
+        } else {
+            return -1;
+        }
+    } else if ((index == 4) || (index == 5)) {
+        // r'(\d\d\d\d)-?Q(\d)'
+        if ((length == 6) || ((length == 7) && (buf[index - 1] == '-'))) {
+            *quarter = parse_1digit(buf + length - 1);
+            *year = parse_4digit(buf);
+        } else {
+            return -1;
+        }
+    } else return -1;
+    return (((*year) != -1 || ((*year) > 2000)) && ((*quarter) != -1)) ? index : -1;
 }
 
+static char delimiters[4] = " /-\\";
 
+int parse_month_year_date(PyObject* string, int* year, int* month)
+{
+    const char* buf = NULL;
+    int length;
 
+    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+        return -1;
+    }
+    buf = PyUnicode_DATA(string);
+    length = (int)PyUnicode_GET_LENGTH(string);
 
+    if (length == 7) {
+        const int delim1 = buf[2];
+        const int delim2 = buf[4];
+        if (strchr(delimiters, delim1) != NULL) {
+            *month = parse_2digit(buf);
+            *year = parse_4digit(buf + 3);
+        } else if (strchr(delimiters, delim2) != NULL) {
+            *year = parse_4digit(buf);
+            *month = parse_2digit(buf + 5);
+        } else {
+            return -1;
+        }
+    } else {
+        return -1;
+    }
 
-/*i = date_string.index('Q', 1, 6)
-            if i == 1:
-                quarter = int(date_string[0])
-                if date_len == 4 or (date_len == 5
-                                     and date_string[i + 1] == '-'):
-                    # r'(\d)Q-?(\d\d)')
-                    year = 2000 + int(date_string[-2:])
-                elif date_len == 6 or (date_len == 7
-                                       and date_string[i + 1] == '-'):
-                    # r'(\d)Q-?(\d\d\d\d)')
-                    year = int(date_string[-4:])
-                else:
-                    raise ValueError
-            elif i == 2 or i == 3:
-                # r'(\d\d)-?Q(\d)'
-                if date_len == 4 or (date_len == 5
-                                     and date_string[i - 1] == '-'):
-                    quarter = int(date_string[-1])
-                    year = 2000 + int(date_string[:2])
-                else:
-                    raise ValueError
-            elif i == 4 or i == 5:
-                if date_len == 6 or (date_len == 7
-                                     and date_string[i - 1] == '-'):
-                    # r'(\d\d\d\d)-?Q(\d)'
-                    quarter = int(date_string[-1])
-                    year = int(date_string[:4])
-                else:
-                    raise ValueError*/
+    return (((*year) != -1) && ((*month) != -1)) ? 0 : -1;
+}
+
+int parse_date_with_freq(PyObject* string, PyObject* freq, PyObject* compare_with_freq, int* year, int* month) {
+    const char* buf = NULL;
+    PyObject* getattr_result = NULL;
+    int length;
+
+    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+        return -1;
+    }
+    buf = PyUnicode_DATA(string);
+    length = (int)PyUnicode_GET_LENGTH(string);
+
+    if ((length == 6) && ((PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) ||
+            (PyObject_RichCompareBool((getattr_result = PyObject_GetAttrString(freq, "rule_code")), compare_with_freq, Py_EQ) == 1))) {
+        *year = parse_4digit(buf);
+        *month = parse_2digit(buf + 5);
+    }
+    Py_XDECREF(getattr_result);
+    return (((*year) != -1) && ((*month) != -1)) ? 0 : -1;
+}
 
 int does_string_look_like_time(PyObject* string)
 {

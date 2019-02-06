@@ -252,7 +252,7 @@ static int inline parse_2digit(const char* s) {
     return result;
 }
 
-#define CHECK_AND_RAISE_EXCEPTION(value, msg)   \
+/*#define CHECK_AND_RAISE_EXCEPTION(value, msg)   \
     if ((value) == -1) {                        \
         PyErr_SetString(PyExc_ValueError, msg); \
         return NULL;                            \
@@ -291,7 +291,7 @@ static PyObject* parse_month_year_date(PyObject *self, PyObject *args)
     }
 
     return Py_BuildValue("(i,i)", year, month);
-}
+}*/
 
 static char not_datelike[sizeof(char) * 256];
 
@@ -379,7 +379,6 @@ static PyMethodDef module_methods[] =
      /* name from python, name in C-file, ..., __doc__ string of method */
      {"concat_date_cols", concat_date_cols, METH_VARARGS, "concatenates date cols and returns numpy array"},
      {"does_string_look_like_datetime", does_string_look_like_datetime, METH_O, "checks if string looks like a datetime"},
-     {"parse_month_year_date", parse_month_year_date, METH_VARARGS, "parses date string (MM/YYYY or YYYY/MM) to month and year"},
      {NULL, NULL, 0, NULL}
 };
 
