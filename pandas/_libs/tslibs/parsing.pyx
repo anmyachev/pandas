@@ -199,12 +199,6 @@ cdef parse_datetime_string_with_reso(date_string, freq=None, dayfirst=False,
 cpdef bint _does_string_look_like_datetime(object date_string):
     return does_string_look_like_datetime(date_string)
 
-cdef inline object _make_year_month_to_date(int year, int month, object default):
-    if default is None:
-        return datetime_new(year, month, 1, 0, 0, 0, 0, _DEFAULT_TZINFO)
-    else:
-        return default.replace(month=month, year=year)
-
 cdef inline object _parse_dateabbr_string(object date_string, object default,
                                           object freq):
     cdef:

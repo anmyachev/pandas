@@ -19,7 +19,7 @@ from tslibs.np_datetime cimport pandas_datetimestruct
 
 cdef extern from "../src/datetime/np_datetime_strings.h":
     int _string_to_dts_noexc(object val, pandas_datetimestruct* dts,
-                            int* out_local, int* out_tzoffset)
+                            int* out_local, int* out_tzoffset) except? -2
 
 from pandas._libs.util cimport (
     is_integer_object, is_float_object, is_string_object, is_datetime64_object)

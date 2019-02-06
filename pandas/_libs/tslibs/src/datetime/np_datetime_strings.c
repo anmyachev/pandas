@@ -99,17 +99,26 @@ int _string_to_dts_noexc(PyObject* val, pandas_datetimestruct* dts,
     char *tmp;
     PyObject* ascii_string = NULL;
 
+#if PY_MAJOR_VERSION == 2
+#error Implement me
+#else
     if (PyUnicode_Check(val)) {
-        ascii_string = PyUnicode_AsASCIIString(val);
-        if (ascii_string == NULL) return -2;
+        if (!PyUnicode_CheckExact(val) || !PyUnicode_IS_ASCII(val)) {
+            ascii_string = PyUnicode_AsASCIIString(val);
+            if (ascii_string == NULL) return -2;
+            val = ascii_string;
+        }
+#endif
+    } else {
+        return -1;
     }
 
-    length = (int)PyUnicode_GET_LENGTH(ascii_string);
+    length = (int)PyUnicode_GET_LENGTH(val);
+    tmp = PyUnicode_DATA(val);
 
-    tmp = PyUnicode_DATA(ascii_string);
     result = parse_iso_8601_datetime_noexc(tmp, length,
                                            dts, out_local, out_tzoffset);
-    Py_DECREF(ascii_string);
+    Py_XDECREF(ascii_string);
     return result;
 }
 
