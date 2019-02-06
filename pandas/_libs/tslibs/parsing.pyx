@@ -42,6 +42,7 @@ cdef extern from "../src/datetime/opt_date_parse.h":
     int parse_date_quarter(object string, int* year, int* quarter)
     int parse_month_year_date(object string, int* year, int* month)
     int parse_date_with_freq(object string, object freq, object compare_with_freq, int* year, int* month)
+    object make_date_from_year_month(int year, int month, object default_date, object default_tzinfo)
 
 
 # ----------------------------------------------------------------------
@@ -225,7 +226,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     if date_len == 4:
         # parse year only like 2000
         try:
-            ret = _make_year_month_to_date(int(date_string), 1, default)
+            ret = make_date_from_year_month(int(date_string), 1, default, _DEFAULT_TZINFO)
             return ret, ret, 'year'
         except ValueError:
             pass
@@ -253,7 +254,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
                 else:
                     month = (quarter - 1) * 3 + 1
 
-                ret = _make_year_month_to_date(year, month, default)
+                ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
                 return ret, ret, 'quarter'
 
     except DateParseError:
@@ -264,7 +265,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     result = parse_date_with_freq(date_string, freq, COMPARE_WITH_FREQ, &year, &month)
     if result == 0:
         try:
-            ret = _make_year_month_to_date(year, month, default)
+            ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
             return ret, ret, 'month'
         except ValueError:
             pass
@@ -272,7 +273,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     result = parse_month_year_date(date_string, &year, &month)
     if result == 0:
         try: 
-            ret = _make_year_month_to_date(year, month, default)
+            ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
             return ret, ret, 'month'
         except ValueError:
             pass

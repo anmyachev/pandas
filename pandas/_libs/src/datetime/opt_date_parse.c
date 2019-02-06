@@ -1,4 +1,6 @@
 #include "opt_date_parse.h"
+
+#include <datetime.h>
 #include <string.h>
 
 static int inline parse_4digit(const char* s) {
@@ -180,4 +182,47 @@ int does_string_look_like_time(PyObject* string)
     }
 
     return (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) ? 1 : 0;
+}
+
+PyObject* make_date_from_year_month(int year, int month, PyObject* default_date, PyObject* default_tzinfo) {
+    if (default_date == Py_None) {
+        if (PyDateTimeAPI == NULL) {
+            PyDateTime_IMPORT;
+        }
+        return PyDateTimeAPI->DateTime_FromDateAndTime(year, month, 1, 0, 0, 0, 0, default_tzinfo, PyDateTimeAPI->DateTimeType);
+    } else {
+        PyObject* replace_meth = PyObject_GetAttrString(default_date, "replace");
+        PyObject* result = NULL;
+        if (replace_meth == NULL) return NULL;
+        PyObject* kw = PyDict_New();
+        if (kw == NULL) {
+            Py_DECREF(replace_meth);
+            return NULL;
+        }
+        PyObject* pyYear = PyLong_FromLong(year);
+        if (pyYear == NULL) {
+            Py_DECREF(replace_meth);
+            Py_DECREF(kw);
+            return NULL;
+        }
+        PyObject* pyMonth = PyLong_FromLong(month);
+        if (pyMonth == NULL) {
+            Py_DECREF(replace_meth);
+            Py_DECREF(kw);
+            Py_DECREF(pyYear);
+            return NULL;
+        }
+        if ((PyDict_SetItemString(kw, "month", pyMonth) == 0) && (PyDict_SetItemString(kw, "year", pyYear) == 0)) {
+            PyObject* emptyTuple = PyTuple_New(0);
+            if (emptyTuple != NULL) {
+                result = PyObject_Call(replace_meth, emptyTuple, kw);
+                Py_DECREF(emptyTuple);
+            }
+        }
+        Py_DECREF(replace_meth);
+        Py_DECREF(kw);
+        Py_DECREF(pyYear);
+        Py_DECREF(pyMonth);
+        return result;
+    }
 }
