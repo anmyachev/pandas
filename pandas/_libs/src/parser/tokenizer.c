@@ -677,8 +677,7 @@ static int parser_buffer_bytes(parser_t *self, size_t nbytes) {
 #define IS_WHITESPACE(c) ((c == ' ' || c == '\t'))
 
 #define IS_TERMINATOR(c)                            \
-    ((self->lineterminator == '\0' && c == '\n') || \
-     (self->lineterminator != '\0' && c == self->lineterminator))
+    (c == line_terminator)
 
 #define IS_QUOTE(c) ((c == self->quotechar && self->quoting != QUOTE_NONE))
 
@@ -745,6 +744,7 @@ int tokenize_bytes(parser_t *self, size_t line_limit, int64_t start_lines) {
     char c;
     char *stream;
     char *buf = self->data + self->datapos;
+    const char line_terminator = (self->lineterminator == '\0') ? '\n' : self->lineterminator;
 
     if (make_stream_space(self, self->datalen - self->datapos) < 0) {
         int64_t bufsize = 100;
