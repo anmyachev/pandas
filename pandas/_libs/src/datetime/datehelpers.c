@@ -358,7 +358,7 @@ static PyObject* does_string_look_like_datetime(PyObject* unused, PyObject* arg)
                 for (; *end_point != 0 && Py_ISSPACE(*end_point); ++end_point);
                 if (*end_point == 0) {
                     // double parsed okay, now check it
-                    result = (parsed < 1000) ? 1 : 0;
+                    result = (parsed >= 1000) ? 1 : 0;
                 }
             }
 
