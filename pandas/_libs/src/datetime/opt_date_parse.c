@@ -189,7 +189,6 @@ PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
         if (PyDateTimeAPI == NULL) {
             PyDateTime_IMPORT;
             if (PyDateTimeAPI == NULL) {
-                PyErr_SetString(PyExc_ValueError, "can not import PyDateTimeAPI");
                 return NULL;
             }
         }
