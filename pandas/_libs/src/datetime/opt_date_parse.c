@@ -188,6 +188,10 @@ PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
     if (default_date == Py_None) {
         if (PyDateTimeAPI == NULL) {
             PyDateTime_IMPORT;
+            if (PyDateTimeAPI == NULL) {
+                PyErr_SetString(PyExc_ValueError, "can not import PyDateTimeAPI");
+                return NULL;
+            }
         }
         return PyDateTimeAPI->DateTime_FromDateAndTime(year, month, 1, 0, 0, 0, 0, default_tzinfo, PyDateTimeAPI->DateTimeType);
     } else {

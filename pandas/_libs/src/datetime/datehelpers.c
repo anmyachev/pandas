@@ -252,47 +252,6 @@ static int inline parse_2digit(const char* s) {
     return result;
 }
 
-/*#define CHECK_AND_RAISE_EXCEPTION(value, msg)   \
-    if ((value) == -1) {                        \
-        PyErr_SetString(PyExc_ValueError, msg); \
-        return NULL;                            \
-    }
-
-static char delimiters[4] = " /-\\";
-
-static PyObject* parse_month_year_date(PyObject *self, PyObject *args)
-{
-    const char* input_string;
-    int string_size;
-    int year, month;
-    if (!PyArg_ParseTuple(args, "s#", &input_string, &string_size)) {
-        return NULL;
-    }
-    if (string_size == 7) {
-        const int delim1 = input_string[2];
-        const int delim2 = input_string[4];
-        if (strchr(delimiters, delim1) != NULL) {
-            month = parse_2digit(input_string);
-            CHECK_AND_RAISE_EXCEPTION(month, "month is not an integer");
-            year = parse_4digit(input_string + 3);
-            CHECK_AND_RAISE_EXCEPTION(year, "year is not an integer");
-        } else if (strchr(delimiters, delim2) != NULL) {
-            year = parse_4digit(input_string);
-            CHECK_AND_RAISE_EXCEPTION(year, "year is not an integer");
-            month = parse_2digit(input_string + 5);
-            CHECK_AND_RAISE_EXCEPTION(month, "month is not an integer");
-        } else {
-            PyErr_SetString(PyExc_ValueError, "missing month-year separator");
-            return NULL;
-        }
-    } else {
-        PyErr_SetString(PyExc_ValueError, "Parsing of string of this length not supported");
-        return NULL;
-    }
-
-    return Py_BuildValue("(i,i)", year, month);
-}*/
-
 static char not_datelike[sizeof(char) * 256];
 
 static PyObject* does_string_look_like_datetime(PyObject* unused, PyObject* arg) {
