@@ -39,6 +39,7 @@ static int inline parse_1digit(const char* s) {
 
 int index_Q(const char* string, int start_position, int end_position, int length) {
     const char* ch = NULL;
+    int i;
 
     if (length > 0) {
         if (start_position > end_position) {
@@ -48,7 +49,7 @@ int index_Q(const char* string, int start_position, int end_position, int length
             return -3;
         }
         ch = string + start_position;
-        for (int i = start_position; i < end_position; ++i, ++ch) {
+        for (i = start_position; i < end_position; ++i, ++ch) {
             if ((*ch) == 'Q' ||  (*ch) == 'q') return i;
         }
     }
@@ -196,19 +197,23 @@ PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
     } else {
         PyObject* replace_meth = PyObject_GetAttrString(default_date, "replace");
         PyObject* result = NULL;
+        PyObject* kw;
+        PyObject* pyYear;
+        PyObject* pyMonth;
+
         if (replace_meth == NULL) return NULL;
-        PyObject* kw = PyDict_New();
+        kw = PyDict_New();
         if (kw == NULL) {
             Py_DECREF(replace_meth);
             return NULL;
         }
-        PyObject* pyYear = PyLong_FromLong(year);
+        pyYear = PyLong_FromLong(year);
         if (pyYear == NULL) {
             Py_DECREF(replace_meth);
             Py_DECREF(kw);
             return NULL;
         }
-        PyObject* pyMonth = PyLong_FromLong(month);
+        pyMonth = PyLong_FromLong(month);
         if (pyMonth == NULL) {
             Py_DECREF(replace_meth);
             Py_DECREF(kw);
