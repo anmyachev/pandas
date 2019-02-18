@@ -132,22 +132,37 @@ int parse_month_year_date(PyObject* string, int* year, int* month)
 
 int parse_date_with_freq(PyObject* string, PyObject* freq, PyObject* compare_with_freq, int* year, int* month) {
     const char* buf = NULL;
-    PyObject* getattr_result = NULL;
     int length;
+    int has_freq = 0;
 
+    if (freq == Py_None) { 
+        return -1;
+    }
     if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
         return -1;
     }
     buf = PyUnicode_DATA(string);
     length = (int)PyUnicode_GET_LENGTH(string);
 
-    if ((length == 6) && ((PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) ||
-            (PyObject_RichCompareBool((getattr_result = PyObject_GetAttrString(freq, "rule_code")), compare_with_freq, Py_EQ) == 1))) {
-        *year = parse_4digit(buf);
-        *month = parse_2digit(buf + 5);
+    if (length == 6) {
+        if (PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) {
+            has_freq = 1;
+        } else {
+            PyObject* getattr_result = PyObject_GetAttrString(freq, "rule_code");
+            if (getattr_result == NULL) {
+                PyErr_Clear();
+                return -1;
+            }
+            has_freq = PyObject_RichCompareBool(getattr_result, compare_with_freq, Py_EQ) == 1;
+            Py_DECREF(getattr_result);
+        }
+        if (has_freq) {
+            *year = parse_4digit(buf);
+            *month = parse_2digit(buf + 5);
+            return (((*year) != -1) && ((*month) != -1)) ? 0 : -1;
+        }
     }
-    Py_XDECREF(getattr_result);
-    return (((*year) != -1) && ((*month) != -1)) ? 0 : -1;
+    return -1;
 }
 
 int does_string_look_like_time(PyObject* string)
