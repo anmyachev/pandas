@@ -14,11 +14,10 @@ static inline int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArray
     }
 #if PY_MAJOR_VERSION == 2
     if (!PyString_Check(item) && !PyUnicode_Check(item)) {
-        PyObject *str_item = PyObject_Str(item);
 #else
     if (!PyUnicode_Check(item)) {
-        PyObject *str_item = PyUnicode_FromObject(item);
 #endif
+        PyObject *str_item = PyObject_Str(item);
         if (str_item == NULL) {
             return 0;
         }
@@ -32,6 +31,22 @@ static inline int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArray
     }
     if (needs_decref) Py_DECREF(item);
     return 1;
+}
+
+static int put_object_as_unicode(PyObject* list, Py_ssize_t idx, PyObject* item) {
+#if PY_MAJOR_VERSION == 2
+#error Python 2 not implemented
+#else
+    if (!PyUnicode_Check(item)) {
+        PyObject* unicode_item = PyObject_Str(item);
+        if (unicode_item == NULL) {
+            return 0;
+        }
+        Py_DECREF(item);
+        item = unicode_item;
+    }
+#endif
+    return (PyList_SetItem(list, idx, item) == 0) ? 1 : 0;
 }
 
 static PyObject* free_arrays(PyObject** arrays, Py_ssize_t size) {
@@ -202,7 +217,12 @@ concat_date_cols(PyObject *self, PyObject *args)
                         Py_DECREF(result);
                         return free_arrays(arrays, sequence_size);
                     }
-                    PyList_SetItem(list_to_join, j, item);
+                    if (!put_object_as_unicode(list_to_join, j, item)) {
+                        Py_DECREF(item);
+                        Py_DECREF(list_to_join);
+                        Py_DECREF(result);
+                        return free_arrays(arrays, sequence_size);
+                    }
                 }
             } else {
                 Py_ssize_t j;
@@ -214,7 +234,12 @@ concat_date_cols(PyObject *self, PyObject *args)
                         return free_arrays(arrays, sequence_size);
                     }
                     Py_INCREF(item);
-                    PyList_SetItem(list_to_join, j, item);
+                    if (!put_object_as_unicode(list_to_join, j, item)) {
+                        Py_DECREF(item);
+                        Py_DECREF(list_to_join);
+                        Py_DECREF(result);
+                        return free_arrays(arrays, sequence_size);
+                    }
                 }
             }
             result_string = PyUnicode_Join(separator, list_to_join);
