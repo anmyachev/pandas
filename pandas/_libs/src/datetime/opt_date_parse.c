@@ -165,6 +165,62 @@ int parse_date_with_freq(PyObject* string, PyObject* freq, PyObject* compare_wit
     return -1;
 }
 
+PyObject* parse_slashed_date(PyObject* string, PyObject* dayfirst, PyObject* tzinfo, PyObject* DateParseError)
+{
+    char* buf;
+    Py_ssize_t length;
+    int day, month, year;
+    PyObject* result;
+#if PY_MAJOR_VERSION == 2
+#error Implement me
+#else
+    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+        Py_RETURN_NONE;
+    }
+    buf = PyUnicode_DATA(string);
+    length = PyUnicode_GET_LENGTH(string);
+#endif
+    if (length != 10 || strchr(delimiters, buf[2]) == NULL || strchr(delimiters, buf[5]) == NULL) {
+        Py_RETURN_NONE;
+    }
+
+    {
+        int part1, part2;
+        if ((part1 = parse_2digit(buf)) == -1 || (part2 = parse_2digit(&buf[3])) == -1 || (year = parse_4digit(&buf[6])) == -1) {
+            Py_RETURN_NONE;
+        }
+        switch (PyObject_IsTrue(dayfirst)) {
+            case 1:
+                day = part1;
+                month = part2;
+                break;
+            case 0:
+                month = part1;
+                day = part2;
+                break;
+            default:
+                return NULL;
+        }
+    }
+    // smoke-validate day and month to throw away values that can never be valid
+    if (day < 1 || day > 31 || month < 1 || month > 12) {
+        return PyErr_Format(DateParseError, "Invalid day (%d) or month (%d) specified", day, month);
+    }
+
+    if (PyDateTimeAPI == NULL) {
+        PyDateTime_IMPORT;
+        if (PyDateTimeAPI == NULL) {
+            return NULL;
+        }
+    }
+
+    result = PyDateTimeAPI->DateTime_FromDateAndTime(year, month, day, 0, 0, 0, 0, tzinfo, PyDateTimeAPI->DateTimeType);
+    if (result == NULL) {
+        return PyErr_Format(DateParseError, "Invalid day (%d), month (%d) or year (%d) specified", day, month, year);
+    }
+    return result;
+}
+
 int does_string_look_like_time(PyObject* string)
 {
     char* buf;

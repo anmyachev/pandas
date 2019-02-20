@@ -43,6 +43,7 @@ cdef extern from "../src/datetime/opt_date_parse.h":
     int parse_month_year_date(object string, int* year, int* month)
     int parse_date_with_freq(object string, object freq, object compare_with_freq, int* year, int* month)
     object make_date_from_year_month(int year, int month, object default_date, object default_tzinfo)
+    object parse_slashed_date(object string, object dayfirst, object tzinfo, object DateParseError)
 
 
 # ----------------------------------------------------------------------
@@ -96,6 +97,10 @@ def parse_datetime_string(date_string, freq=None, dayfirst=False,
         # use current datetime as default, not pass _DEFAULT_DATETIME
         dt = du_parse(date_string, dayfirst=dayfirst,
                       yearfirst=yearfirst, **kwargs)
+        return dt
+
+    dt = parse_slashed_date(date_string, dayfirst, _DEFAULT_TZINFO, DateParseError)
+    if dt is not None:
         return dt
 
     try:
