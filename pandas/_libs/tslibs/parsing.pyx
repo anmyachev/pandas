@@ -90,7 +90,7 @@ def parse_datetime_string(date_string, freq=None, dayfirst=False,
     cdef:
         object dt
 
-    if not _does_string_look_like_datetime(date_string):
+    if not does_string_look_like_datetime(date_string):
         raise ValueError('Given date string not likely a datetime.')
 
     if does_string_look_like_time(date_string):
@@ -180,7 +180,7 @@ cdef parse_datetime_string_with_reso(date_string, freq=None, dayfirst=False,
     cdef:
         object parsed, reso
 
-    if not _does_string_look_like_datetime(date_string):
+    if not does_string_look_like_datetime(date_string):
         raise ValueError('Given date string not likely a datetime.')
 
     try:
@@ -200,9 +200,6 @@ cdef parse_datetime_string_with_reso(date_string, freq=None, dayfirst=False,
     if parsed is None:
         raise DateParseError("Could not parse {dstr}".format(dstr=date_string))
     return parsed, parsed, reso
-
-cpdef bint _does_string_look_like_datetime(object date_string):
-    return does_string_look_like_datetime(date_string)
 
 cdef inline object _parse_dateabbr_string(object date_string, object default,
                                           object freq):

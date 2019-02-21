@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 import cython
 
+from collections import OrderedDict
+
+from cpython cimport PyUnicode_Check
+
+from util cimport (is_integer_object, is_float_object, is_string_object,
+                   is_datetime64_object)
+
 from cpython.datetime cimport (PyDateTime_Check, PyDate_Check,
                                PyDateTime_CheckExact,
                                PyDateTime_IMPORT,
@@ -524,6 +531,7 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
 
     result = np.empty(n, dtype='M8[ns]')
     iresult = result.view('i8')
+    _cache = OrderedDict()
 
     try:
         for i in range(n):
@@ -589,6 +597,16 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                         val = val.encode('utf-8')
 
                     try:
+                        cached = _cache.pop(val)
+                    except KeyError:
+                        pass
+                    else:
+                        _cache[val] = iresult[i] = cached
+                        continue
+                    if len(_cache) > 300:
+                        _cache.popitem(False)
+
+                    try:
                         # We know for sure that "val" is a UTF8 string, so we can execute
                         # a faster version that doesn't raise a ValueError exception if it
                         # was supplied with something that's not a date.
@@ -597,12 +615,14 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                             # An error at this point is a _parsing_ error
                             # specifically _not_ OutOfBoundsDatetime
                             if _parse_today_now(val, &iresult[i]):
+                                _cache[val] = iresult[i]
                                 continue
                             elif require_iso8601:
                                 # if requiring iso8601 strings, skip trying
                                 # other formats
                                 if is_coerce:
                                     iresult[i] = NPY_NAT
+                                    _cache[val] = iresult[i]
                                     continue
                                 elif is_raise:
                                     raise ValueError("time data {val} doesn't "
@@ -617,6 +637,7 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                             except Exception:
                                 if is_coerce:
                                     iresult[i] = NPY_NAT
+                                    _cache[val] = iresult[i]
                                     continue
                                 raise TypeError("invalid string coercion to "
                                                 "datetime")
@@ -634,12 +655,21 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                                 # parsing mixed naive and aware strings
                                 out_tzoffset_vals.add('naive')
 
-                            _ts = convert_datetime_to_tsobject(py_dt, None)
-                            iresult[i] = _ts.value
+                            try:
+                                _ts = convert_datetime_to_tsobject(py_dt, None)
+                                iresult[i] = _ts.value
+                                _cache[val] = iresult[i]
+                            except OutOfBoundsDatetime:
+                                if is_coerce:
+                                    iresult[i] = NPY_NAT
+                                    _cache[val] = iresult[i]
+                                    continue
+                                raise
                     except:
                         # TODO: What exception are we concerned with here?
                         if is_coerce:
                             iresult[i] = NPY_NAT
+                            _cache[val] = iresult[i]
                             continue
                         raise
                     if not string_to_dts_failed:
@@ -661,7 +691,24 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                             # parsing mixed naive and aware strings
                             out_tzoffset_vals.add('naive')
                         iresult[i] = value
-                        check_dts_bounds(&dts)
+                        try:
+                            check_dts_bounds(&dts)
+                        except OutOfBoundsDatetime:
+                            # GH#19382 for just-barely-OutOfBounds falling back to
+                            # dateutil parser will return incorrect result because
+                            # it will ignore nanoseconds
+                            if is_coerce:
+                                iresult[i] = NPY_NAT
+                                _cache[val] = iresult[i]
+                                continue
+                            elif require_iso8601:
+                                if is_raise:
+                                    raise ValueError("time data {val} doesn't "
+                                                    "match format specified"
+                                                    .format(val=val))
+                                return values
+                            raise
+                        _cache[val] = iresult[i]
 
                 else:
                     if is_coerce:
