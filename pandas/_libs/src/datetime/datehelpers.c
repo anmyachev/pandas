@@ -6,23 +6,25 @@
 #include <locale.h>
 #include <string.h>
 
-static inline int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject *result)
+static inline int convert_and_set_item(PyObject *item, Py_ssize_t index, PyArrayObject *result, int keep_numbers)
 {
     int needs_decref = 0;
     if (item == NULL) {
         return 0;
     }
+    if (!keep_numbers || !(PyFloat_Check(item) || PyLong_Check(item))) {
 #if PY_MAJOR_VERSION == 2
-    if (!PyString_Check(item) && !PyUnicode_Check(item)) {
+        if (!PyString_Check(item) && !PyUnicode_Check(item)) {
 #else
-    if (!PyUnicode_Check(item)) {
+        if (!PyUnicode_Check(item)) {
 #endif
-        PyObject *str_item = PyObject_Str(item);
-        if (str_item == NULL) {
-            return 0;
+            PyObject *str_item = PyObject_Str(item);
+            if (str_item == NULL) {
+                return 0;
+            }
+            item = str_item;
+            needs_decref = 1;
         }
-        item = str_item;
-        needs_decref = 1;
     }
     if (PyArray_SETITEM(result, PyArray_GETPTR1(result, index), item) != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Cannot set resulting item");
@@ -58,19 +60,23 @@ static PyObject* free_arrays(PyObject** arrays, Py_ssize_t size) {
 }
 
 static PyObject*
-concat_date_cols(PyObject *self, PyObject *args)
+concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *sequence = NULL;
+    PyObject *py_keep_numbers = NULL;
     PyArrayObject *result = NULL;
     Py_ssize_t sequence_size = 0;
+    int keep_numbers;
+    char* kwlist[] = {"", "keep_numbers", NULL};
 
-    if (!PyArg_ParseTuple(args, "O", &sequence)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O", kwlist, &sequence, &py_keep_numbers)) {
         return NULL;
     }
     if (!PySequence_Check(sequence)) {
         PyErr_SetString(PyExc_TypeError, "argument must be sequence");
         return NULL;
     }
+    keep_numbers = py_keep_numbers != NULL ? PyObject_IsTrue(py_keep_numbers) : 0;
 
     sequence_size = PySequence_Size(sequence);
     if (sequence_size == -1) {
@@ -105,7 +111,7 @@ concat_date_cols(PyObject *self, PyObject *args)
             Py_ssize_t i;
             for (i = 0; i < array_size; ++i) {
                 PyObject *item = PyArray_GETITEM(ndarray, PyArray_GETPTR1(ndarray, i));
-                if (!convert_and_set_item(item, i, result)) {
+                if (!convert_and_set_item(item, i, result, keep_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
                     Py_DECREF(item);
@@ -124,7 +130,7 @@ concat_date_cols(PyObject *self, PyObject *args)
 
             for (i = 0; i < array_size; ++i) {
                 PyObject* item = PySequence_Fast_GET_ITEM(fast_array, i);
-                if (!convert_and_set_item(item, i, result)) {
+                if (!convert_and_set_item(item, i, result, keep_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
                     Py_DECREF(fast_array);
@@ -375,7 +381,7 @@ static PyObject* does_string_look_like_datetime(PyObject* unused, PyObject* arg)
 static PyMethodDef module_methods[] =
 {
      /* name from python, name in C-file, ..., __doc__ string of method */
-     {"concat_date_cols", concat_date_cols, METH_VARARGS, "concatenates date cols and returns numpy array"},
+     {"concat_date_cols", (PyCFunction)concat_date_cols, METH_VARARGS | METH_KEYWORDS, "concatenates date cols and returns numpy array"},
      {"does_string_look_like_datetime", does_string_look_like_datetime, METH_O, "checks if string looks like a datetime"},
      {NULL, NULL, 0, NULL}
 };
