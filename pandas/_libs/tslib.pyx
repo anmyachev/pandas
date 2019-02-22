@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import cython
 
-from collections import OrderedDict
-
 from cpython cimport PyUnicode_Check
 
 from util cimport (is_integer_object, is_float_object, is_string_object,
@@ -531,7 +529,7 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
 
     result = np.empty(n, dtype='M8[ns]')
     iresult = result.view('i8')
-    _cache = OrderedDict()
+    _cache = {}
 
     try:
         for i in range(n):
@@ -597,14 +595,15 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                         val = val.encode('utf-8')
 
                     try:
-                        cached = _cache.pop(val)
+                        cached = _cache[val]
                     except KeyError:
                         pass
                     else:
-                        _cache[val] = iresult[i] = cached
+                        iresult[i] = cached
                         continue
-                    if len(_cache) > 300:
-                        _cache.popitem(False)
+                    if len(_cache) > 1000:
+                        # pop random item from cache to stop it from ever growing
+                        _cache.popitem()
 
                     try:
                         # We know for sure that "val" is a UTF8 string, so we can execute
