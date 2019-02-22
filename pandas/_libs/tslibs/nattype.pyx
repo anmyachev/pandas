@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from cpython cimport (
+    PyFloat_Check, PyFloat_AS_DOUBLE, PyComplex_Check,
     PyObject_RichCompare,
     Py_GT, Py_GE, Py_EQ, Py_NE, Py_LT, Py_LE)
 
@@ -713,7 +714,14 @@ NaT = c_NaT        # Python-visible
 
 cdef inline bint checknull_with_nat(object val):
     """ utility to check if a value is a nat or not """
-    return val is None or util.is_nan(val) or val is c_NaT
+    cdef:
+        double dval
+    if val is None or val is NaT:
+        return True
+    if PyFloat_Check(val):
+        dval = PyFloat_AS_DOUBLE(val)
+        return dval != dval
+    return False
 
 
 cpdef bint is_null_datetimelike(object val, bint inat_is_null=True):
