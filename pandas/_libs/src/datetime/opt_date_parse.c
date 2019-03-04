@@ -37,7 +37,8 @@ static int inline parse_1digit(const char* s) {
 }
 
 
-int index_Q(const char* string, int start_position, int end_position, int length) {
+int index_Q(const char* string_with_index, int start_position,
+            int end_position, int length) {
     const char* ch = NULL;
     int i;
 
@@ -48,7 +49,7 @@ int index_Q(const char* string, int start_position, int end_position, int length
         if ((start_position < 0) || (end_position > length)) {
             return -3;
         }
-        ch = string + start_position;
+        ch = string_with_index + start_position;
         for (i = start_position; i < end_position; ++i, ++ch) {
             if ((*ch) == 'Q' ||  (*ch) == 'q') return i;
         }
@@ -56,70 +57,44 @@ int index_Q(const char* string, int start_position, int end_position, int length
     return -4;
 }
 
-int parse_date_quarter(PyObject* string, int* year, int* quarter) {
+int parse_date_quarter(PyObject* parse_string, int* year, int* quarter) {
     const char* buf = NULL;
     int length, index;
+    int _year, _quarter;
 
-    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+    if (!PyUnicode_CheckExact(parse_string) ||
+            !PyUnicode_IS_READY(parse_string)) {
         return -1;
     }
-    buf = PyUnicode_DATA(string);
-    length = (int)PyUnicode_GET_LENGTH(string);
+    buf = PyUnicode_DATA(parse_string);
+    length = (int)PyUnicode_GET_LENGTH(parse_string);
 
     index = index_Q(buf, 1, 6, length);
     if (index == 1) {
-        *quarter = parse_1digit(buf);
+        _quarter = parse_1digit(buf);
         if ((length == 4) || ((length == 5) && (buf[index + 1] == '-'))) {
             // r'(\d)Q-?(\d\d)')
-            *year = 2000 + parse_2digit(buf + length - 2);
-        } else if ((length == 6) || ((length == 7) && (buf[index + 1] == '-'))) {
+            _year = 2000 + parse_2digit(buf + length - 2);
+        } else if ((length == 6) || ((length == 7) &&
+                                                (buf[index + 1] == '-'))) {
             // r'(\d)Q-?(\d\d\d\d)')
-            *year = parse_4digit(buf + length - 4);
+            _year = parse_4digit(buf + length - 4);
         } else {
             return -1;
         }
-    } else if ((index == 2) || (index == 3)){
+    } else if ((index == 2) || (index == 3)) {
         // r'(\d\d)-?Q(\d)'
         if ((length == 4) || ((length == 5) && (buf[index - 1] == '-'))) {
-            *quarter = parse_1digit(buf + length - 1);
-            *year = 2000 + parse_2digit(buf + length - 2);
+            _quarter = parse_1digit(buf + length - 1);
+            _year = 2000 + parse_2digit(buf + length - 2);
         } else {
             return -1;
         }
     } else if ((index == 4) || (index == 5)) {
         // r'(\d\d\d\d)-?Q(\d)'
         if ((length == 6) || ((length == 7) && (buf[index - 1] == '-'))) {
-            *quarter = parse_1digit(buf + length - 1);
-            *year = parse_4digit(buf);
-        } else {
-            return -1;
-        }
-    } else return -1;
-    return (((*year) != -1 || ((*year) > 2000)) && ((*quarter) != -1)) ? index : -1;
-}
-
-static char delimiters[4] = " /-\\";
-
-int parse_month_year_date(PyObject* string, int* year, int* month)
-{
-    const char* buf = NULL;
-    int length;
-
-    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
-        return -1;
-    }
-    buf = PyUnicode_DATA(string);
-    length = (int)PyUnicode_GET_LENGTH(string);
-
-    if (length == 7) {
-        const int delim1 = buf[2];
-        const int delim2 = buf[4];
-        if (strchr(delimiters, delim1) != NULL) {
-            *month = parse_2digit(buf);
-            *year = parse_4digit(buf + 3);
-        } else if (strchr(delimiters, delim2) != NULL) {
-            *year = parse_4digit(buf);
-            *month = parse_2digit(buf + 5);
+            _quarter = parse_1digit(buf + length - 1);
+            _year = parse_4digit(buf);
         } else {
             return -1;
         }
@@ -127,46 +102,88 @@ int parse_month_year_date(PyObject* string, int* year, int* month)
         return -1;
     }
 
-    return (((*year) != -1) && ((*month) != -1)) ? 0 : -1;
+    *year = _year;
+    *quarter = _quarter;
+    return ((_year != -1 || (_year > 2000)) &&
+                                (_quarter != -1)) ? index : -1;
 }
 
-int parse_date_with_freq(PyObject* string, PyObject* freq, PyObject* compare_with_freq, int* year, int* month) {
+static char delimiters[4] = " /-\\";
+
+int parse_month_year_date(PyObject* parse_string, int* year, int* month) {
+    const char* buf = NULL;
+    int length;
+    int _year, _month;
+
+    if (!PyUnicode_CheckExact(parse_string) ||
+            !PyUnicode_IS_READY(parse_string)) {
+        return -1;
+    }
+    buf = PyUnicode_DATA(parse_string);
+    length = (int)PyUnicode_GET_LENGTH(parse_string);
+
+    if (length == 7) {
+        const int delim1 = buf[2];
+        const int delim2 = buf[4];
+        if (strchr(delimiters, delim1) != NULL) {
+            _month = parse_2digit(buf);
+            _year = parse_4digit(buf + 3);
+        } else if (strchr(delimiters, delim2) != NULL) {
+            _year = parse_4digit(buf);
+            _month = parse_2digit(buf + 5);
+        } else {
+            return -1;
+        }
+    } else {
+        return -1;
+    }
+    *year = _year;
+    *month = _month;
+    return ((_year != -1) && (_month != -1)) ? 0 : -1;
+}
+
+int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
+                        PyObject* compare_with_freq, int* year, int* month) {
     const char* buf = NULL;
     int length;
     int has_freq = 0;
+    int _year, _month;
 
-    if (freq == Py_None) { 
+    if (freq == Py_None) {
         return -1;
     }
-    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+    if (!PyUnicode_CheckExact(parse_string) ||
+            !PyUnicode_IS_READY(parse_string)) {
         return -1;
     }
-    buf = PyUnicode_DATA(string);
-    length = (int)PyUnicode_GET_LENGTH(string);
+    buf = PyUnicode_DATA(parse_string);
+    length = (int)PyUnicode_GET_LENGTH(parse_string);
 
     if (length == 6) {
         if (PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) {
             has_freq = 1;
         } else {
-            PyObject* getattr_result = PyObject_GetAttrString(freq, "rule_code");
+            PyObject* getattr_result = PyObject_GetAttrString(freq,
+                                                            "rule_code");
             if (getattr_result == NULL) {
                 PyErr_Clear();
                 return -1;
             }
-            has_freq = PyObject_RichCompareBool(getattr_result, compare_with_freq, Py_EQ) == 1;
+            has_freq = PyObject_RichCompareBool(getattr_result,
+                                                compare_with_freq, Py_EQ) == 1;
             Py_DECREF(getattr_result);
         }
         if (has_freq) {
-            *year = parse_4digit(buf);
-            *month = parse_2digit(buf + 5);
-            return (((*year) != -1) && ((*month) != -1)) ? 0 : -1;
+            *year = _year = parse_4digit(buf);
+            *month = _month = parse_2digit(buf + 5);
+            return ((_year != -1) && (_month != -1)) ? 0 : -1;
         }
     }
     return -1;
 }
 
-PyObject* parse_slashed_date(PyObject* string, PyObject* dayfirst, PyObject* tzinfo, PyObject* DateParseError)
-{
+PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
+                            PyObject* tzinfo, PyObject* DateParseError) {
     char* buf;
     Py_ssize_t length;
     int day, month, year;
@@ -174,19 +191,23 @@ PyObject* parse_slashed_date(PyObject* string, PyObject* dayfirst, PyObject* tzi
 #if PY_MAJOR_VERSION == 2
 #error Implement me
 #else
-    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+    if (!PyUnicode_CheckExact(parse_string) ||
+            !PyUnicode_IS_READY(parse_string)) {
         Py_RETURN_NONE;
     }
-    buf = PyUnicode_DATA(string);
-    length = PyUnicode_GET_LENGTH(string);
+    buf = PyUnicode_DATA(parse_string);
+    length = PyUnicode_GET_LENGTH(parse_string);
 #endif
-    if (length != 10 || strchr(delimiters, buf[2]) == NULL || strchr(delimiters, buf[5]) == NULL) {
+    if (length != 10 || strchr(delimiters, buf[2]) == NULL ||
+                            strchr(delimiters, buf[5]) == NULL) {
         Py_RETURN_NONE;
     }
 
     {
         int part1, part2;
-        if ((part1 = parse_2digit(buf)) == -1 || (part2 = parse_2digit(&buf[3])) == -1 || (year = parse_4digit(&buf[6])) == -1) {
+        if ((part1 = parse_2digit(buf)) == -1 ||
+                (part2 = parse_2digit(&buf[3])) == -1 ||
+                (year = parse_4digit(&buf[6])) == -1) {
             Py_RETURN_NONE;
         }
         switch (PyObject_IsTrue(dayfirst)) {
@@ -204,7 +225,8 @@ PyObject* parse_slashed_date(PyObject* string, PyObject* dayfirst, PyObject* tzi
     }
     // smoke-validate day and month to throw away values that can never be valid
     if (day < 1 || day > 31 || month < 1 || month > 12) {
-        return PyErr_Format(DateParseError, "Invalid day (%d) or month (%d) specified", day, month);
+        return PyErr_Format(DateParseError,
+                        "Invalid day (%d) or month (%d) specified", day, month);
     }
 
     if (PyDateTimeAPI == NULL) {
@@ -214,27 +236,30 @@ PyObject* parse_slashed_date(PyObject* string, PyObject* dayfirst, PyObject* tzi
         }
     }
 
-    result = PyDateTimeAPI->DateTime_FromDateAndTime(year, month, day, 0, 0, 0, 0, tzinfo, PyDateTimeAPI->DateTimeType);
+    result = PyDateTimeAPI->DateTime_FromDateAndTime(year, month, day, 0, 0, 0,
+                                        0, tzinfo, PyDateTimeAPI->DateTimeType);
     if (result == NULL) {
-        return PyErr_Format(DateParseError, "Invalid day (%d), month (%d) or year (%d) specified", day, month, year);
+        return PyErr_Format(DateParseError,
+                        "Invalid day (%d), month (%d) or year (%d) specified",
+                        day, month, year);
     }
     return result;
 }
 
-int does_string_look_like_time(PyObject* string)
-{
+int does_string_look_like_time(PyObject* parse_string) {
     char* buf;
     Py_ssize_t length;
     int hour, minute;
 #if PY_MAJOR_VERSION == 2
 #error Implement me
 #else
-    if (!PyUnicode_CheckExact(string) || !PyUnicode_IS_READY(string)) {
+    if (!PyUnicode_CheckExact(parse_string) ||
+            !PyUnicode_IS_READY(parse_string)) {
         // not a string, so doesn't look like time
         return 0;
     }
-    buf = PyUnicode_DATA(string);
-    length = PyUnicode_GET_LENGTH(string);
+    buf = PyUnicode_DATA(parse_string);
+    length = PyUnicode_GET_LENGTH(parse_string);
 #endif
     if (length < 4) {
         // h:MM doesn't fit in, not a time
@@ -256,7 +281,8 @@ int does_string_look_like_time(PyObject* string)
     return (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) ? 1 : 0;
 }
 
-PyObject* make_date_from_year_month(int year, int month, PyObject* default_date, PyObject* default_tzinfo) {
+PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
+                                    PyObject* default_tzinfo) {
     if (default_date == Py_None) {
         if (PyDateTimeAPI == NULL) {
             PyDateTime_IMPORT;
@@ -264,9 +290,11 @@ PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
                 return NULL;
             }
         }
-        return PyDateTimeAPI->DateTime_FromDateAndTime(year, month, 1, 0, 0, 0, 0, default_tzinfo, PyDateTimeAPI->DateTimeType);
+        return PyDateTimeAPI->DateTime_FromDateAndTime(year, month, 1, 0, 0, 0,
+                                0, default_tzinfo, PyDateTimeAPI->DateTimeType);
     } else {
-        PyObject* replace_meth = PyObject_GetAttrString(default_date, "replace");
+        PyObject* replace_meth = PyObject_GetAttrString(default_date,
+                                                        "replace");
         PyObject* result = NULL;
         PyObject* kw;
         PyObject* pyYear;
@@ -291,7 +319,8 @@ PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
             Py_DECREF(pyYear);
             return NULL;
         }
-        if ((PyDict_SetItemString(kw, "month", pyMonth) == 0) && (PyDict_SetItemString(kw, "year", pyYear) == 0)) {
+        if ((PyDict_SetItemString(kw, "month", pyMonth) == 0) &&
+                (PyDict_SetItemString(kw, "year", pyYear) == 0)) {
             PyObject* emptyTuple = PyTuple_New(0);
             if (emptyTuple != NULL) {
                 result = PyObject_Call(replace_meth, emptyTuple, kw);

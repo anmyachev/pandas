@@ -370,7 +370,8 @@ static PyObject* does_string_look_like_datetime(PyObject* unused,
                         return PyErr_NoMemory();
                     }
                     memcpy(to_parse, buf, dot_pos - buf);
-                    memcpy(&to_parse[dot_pos - buf], decimal_point, decimal_len);
+                    memcpy(&to_parse[dot_pos - buf], decimal_point,
+                            decimal_len);
                     memcpy(&to_parse[dot_pos - buf + decimal_len], dot_pos + 1,
                             length - (dot_pos - buf) - 1);
                 }

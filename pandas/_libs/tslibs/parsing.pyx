@@ -38,12 +38,15 @@ from pandas._libs.tslibs.nattype import nat_strings, NaT
 from pandas._libs.datehelpers import does_string_look_like_datetime
 
 cdef extern from "../src/datetime/opt_date_parse.h":
-    int does_string_look_like_time(object string)
-    int parse_date_quarter(object string, int* year, int* quarter)
-    int parse_month_year_date(object string, int* year, int* month)
-    int parse_date_with_freq(object string, object freq, object compare_with_freq, int* year, int* month)
-    object make_date_from_year_month(int year, int month, object default_date, object default_tzinfo)
-    object parse_slashed_date(object string, object dayfirst, object tzinfo, object DateParseError)
+    int does_string_look_like_time(object parse_string)
+    int parse_date_quarter(object parse_string, int* year, int* quarter)
+    int parse_month_year_date(object parse_string, int* year, int* month)
+    int parse_date_with_freq(object parse_string, object freq,
+                            object compare_with_freq, int* year, int* month)
+    object make_date_from_year_month(int year, int month, object default_date,
+                                    object default_tzinfo)
+    object parse_slashed_date(object parse_string, object dayfirst,
+                            object tzinfo, object DateParseError)
 
 
 # ----------------------------------------------------------------------
