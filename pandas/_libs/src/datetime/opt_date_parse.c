@@ -61,6 +61,7 @@ int parse_date_quarter(PyObject* parse_string, int* year, int* quarter) {
     const char* buf = NULL;
     int length, index;
     int _year, _quarter;
+    int result;
 
     if (!PyUnicode_CheckExact(parse_string) ||
             !PyUnicode_IS_READY(parse_string)) {
@@ -102,10 +103,12 @@ int parse_date_quarter(PyObject* parse_string, int* year, int* quarter) {
         return -1;
     }
 
-    *year = _year;
-    *quarter = _quarter;
-    return ((_year != -1 || (_year > 2000)) &&
-                                (_quarter != -1)) ? index : -1;
+    result = ((_year != -1 || (_year > 2000)) && (_quarter != -1)) ? index : -1;
+    if (result != -1) {
+        *year = _year;
+        *quarter = _quarter;
+    }
+    return result;
 }
 
 static char delimiters[4] = " /-\\";
@@ -114,6 +117,7 @@ int parse_month_year_date(PyObject* parse_string, int* year, int* month) {
     const char* buf = NULL;
     int length;
     int _year, _month;
+    int result;
 
     if (!PyUnicode_CheckExact(parse_string) ||
             !PyUnicode_IS_READY(parse_string)) {
@@ -137,9 +141,12 @@ int parse_month_year_date(PyObject* parse_string, int* year, int* month) {
     } else {
         return -1;
     }
-    *year = _year;
-    *month = _month;
-    return ((_year != -1) && (_month != -1)) ? 0 : -1;
+    result = ((_year != -1) && (_month != -1)) ? 0 : -1;
+    if (result != -1) {
+        *year = _year;
+        *month = _month;
+    }
+    return result;
 }
 
 int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
@@ -148,6 +155,7 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
     int length;
     int has_freq = 0;
     int _year, _month;
+    int result;
 
     if (freq == Py_None) {
         return -1;
@@ -164,7 +172,7 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
             has_freq = 1;
         } else {
             PyObject* getattr_result = PyObject_GetAttrString(freq,
-                                                            "rule_code");
+                                                              "rule_code");
             if (getattr_result == NULL) {
                 PyErr_Clear();
                 return -1;
@@ -174,16 +182,22 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
             Py_DECREF(getattr_result);
         }
         if (has_freq) {
-            *year = _year = parse_4digit(buf);
-            *month = _month = parse_2digit(buf + 5);
-            return ((_year != -1) && (_month != -1)) ? 0 : -1;
+            _year = parse_4digit(buf);
+            _month = parse_2digit(buf + 5);
+
+            result = ((_year != -1) && (_month != -1)) ? 0 : -1;
+            if (result != -1) {
+                *year = _year;
+                *month = _month;
+            }
+            return result;
         }
     }
     return -1;
 }
 
 PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
-                            PyObject* tzinfo, PyObject* DateParseError) {
+                             PyObject* tzinfo, PyObject* DateParseError) {
     char* buf;
     Py_ssize_t length;
     int day, month, year;
@@ -226,7 +240,8 @@ PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
     // smoke-validate day and month to throw away values that can never be valid
     if (day < 1 || day > 31 || month < 1 || month > 12) {
         return PyErr_Format(DateParseError,
-                        "Invalid day (%d) or month (%d) specified", day, month);
+                            "Invalid day (%d) or month (%d) specified",
+                            day, month);
     }
 
     if (PyDateTimeAPI == NULL) {
@@ -237,11 +252,11 @@ PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
     }
 
     result = PyDateTimeAPI->DateTime_FromDateAndTime(year, month, day, 0, 0, 0,
-                                        0, tzinfo, PyDateTimeAPI->DateTimeType);
+            0, tzinfo, PyDateTimeAPI->DateTimeType);
     if (result == NULL) {
         return PyErr_Format(DateParseError,
-                        "Invalid day (%d), month (%d) or year (%d) specified",
-                        day, month, year);
+                "Invalid day (%d), month (%d) or year (%d) specified", day,
+                month, year);
     }
     return result;
 }
@@ -291,7 +306,7 @@ PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
             }
         }
         return PyDateTimeAPI->DateTime_FromDateAndTime(year, month, 1, 0, 0, 0,
-                                0, default_tzinfo, PyDateTimeAPI->DateTimeType);
+                0, default_tzinfo, PyDateTimeAPI->DateTimeType);
     } else {
         PyObject* replace_meth = PyObject_GetAttrString(default_date,
                                                         "replace");

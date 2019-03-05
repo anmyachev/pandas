@@ -7,7 +7,8 @@
 #include <string.h>
 
 static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
-                                      PyArrayObject *result, int keep_numbers) {
+                                       PyArrayObject *result,
+                                       int keep_numbers) {
     int needs_decref = 0;
     if (item == NULL) {
         return 0;
@@ -36,7 +37,7 @@ static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
 }
 
 static int put_object_as_unicode(PyObject* list, Py_ssize_t idx,
-                                PyObject* item) {
+                                 PyObject* item) {
 #if PY_MAJOR_VERSION == 2
 #error Python 2 not implemented
 #else
@@ -60,8 +61,8 @@ static PyObject* free_arrays(PyObject** arrays, Py_ssize_t size) {
     return NULL;
 }
 
-static PyObject*
-concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject* concat_date_cols(PyObject *self, PyObject *args,
+                                  PyObject *kwds) {
     PyObject *sequence = NULL;
     PyObject *py_keep_numbers = NULL;
     PyArrayObject *result = NULL;
@@ -77,8 +78,8 @@ concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds) {
         PyErr_SetString(PyExc_TypeError, "argument must be sequence");
         return NULL;
     }
-    keep_numbers = py_keep_numbers != NULL ?
-                    PyObject_IsTrue(py_keep_numbers) : 0;
+    keep_numbers = (py_keep_numbers != NULL) ? \
+            PyObject_IsTrue(py_keep_numbers) : 0;
 
     sequence_size = PySequence_Size(sequence);
     if (sequence_size == -1) {
@@ -113,7 +114,7 @@ concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds) {
             Py_ssize_t i;
             for (i = 0; i < array_size; ++i) {
                 PyObject *item = PyArray_GETITEM(ndarray,
-                                                PyArray_GETPTR1(ndarray, i));
+                                                 PyArray_GETPTR1(ndarray, i));
                 if (!convert_and_set_item(item, i, result, keep_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
@@ -124,7 +125,7 @@ concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds) {
             }
         } else {
             PyObject* fast_array = PySequence_Fast(array,
-                                 "elements of input sequence must be sequence");
+                    "elements of input sequence must be sequence");
             Py_ssize_t i;
             if (fast_array == NULL) {
                 Py_DECREF(result);
@@ -194,9 +195,9 @@ concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds) {
             for (i = 0; i < sequence_size; ++i, ++parray) {
                 Py_ssize_t array_size;
                 fast_array = PySequence_Fast(*parray,
-                                "elements of input sequence must be sequence");
-                array_size = (fast_array == NULL) ? -1 :
-                                        PySequence_Fast_GET_SIZE(fast_array);
+                        "elements of input sequence must be sequence");
+                array_size = (fast_array != NULL) ? \
+                        PySequence_Fast_GET_SIZE(fast_array) : -1;
 
                 if (array_size < 0) {
                     Py_XDECREF(fast_array);
@@ -268,7 +269,7 @@ concat_date_cols(PyObject *self, PyObject *args, PyObject *kwds) {
                 return free_arrays(arrays, sequence_size);
             }
             if (PyArray_SETITEM(result, PyArray_GETPTR1(result, i),
-                                                        result_string) != 0) {
+                                result_string) != 0) {
                 PyErr_SetString(PyExc_RuntimeError,
                                 "Cannot set resulting item");
                 Py_DECREF(list_to_join);
@@ -371,9 +372,9 @@ static PyObject* does_string_look_like_datetime(PyObject* unused,
                     }
                     memcpy(to_parse, buf, dot_pos - buf);
                     memcpy(&to_parse[dot_pos - buf], decimal_point,
-                            decimal_len);
+                           decimal_len);
                     memcpy(&to_parse[dot_pos - buf + decimal_len], dot_pos + 1,
-                            length - (dot_pos - buf) - 1);
+                           length - (dot_pos - buf) - 1);
                 }
             }
 
@@ -382,7 +383,7 @@ static PyObject* does_string_look_like_datetime(PyObject* unused,
             if (end_point != to_parse && errno == 0) {
                 // need to check if there's anything left
                 for (; *end_point != 0 && Py_ISSPACE(*end_point); ++end_point)
-                    continue;
+                    {}
                 if (*end_point == 0) {
                     // double parsed okay, now check it
                     result = (parsed >= 1000) ? 1 : 0;
@@ -425,8 +426,7 @@ static struct PyModuleDef moduledef = {
     module_methods
 };
 
-PyMODINIT_FUNC
-PyInit_datehelpers(void) {
+PyMODINIT_FUNC PyInit_datehelpers(void) {
     import_array();
 
     memset(not_datelike, 0, sizeof(not_datelike));
