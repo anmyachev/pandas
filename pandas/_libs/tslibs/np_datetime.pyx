@@ -37,7 +37,7 @@ cdef extern from "src/datetime/np_datetime_strings.h":
                                 npy_datetimestruct *out,
                                 int *out_local, int *out_tzoffset)
     int parse_iso_8601_datetime_noexc(char *str, int len,
-                                      pandas_datetimestruct *out,
+                                      npy_datetimestruct *out,
                                       int *out_local, int *out_tzoffset)
 
 

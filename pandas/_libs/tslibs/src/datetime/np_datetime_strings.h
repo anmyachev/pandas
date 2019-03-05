@@ -62,11 +62,11 @@ parse_iso_8601_datetime(char *str, int len,
 // doesn't set Python exceptions but still returns -1 on error
 int
 parse_iso_8601_datetime_noexc(char *str, int len,
-                    pandas_datetimestruct *out,
+                    npy_datetimestruct *out,
                     int *out_local,
                     int *out_tzoffset);
 
-int _string_to_dts_noexc(PyObject* val, pandas_datetimestruct* dts,
+int _string_to_dts_noexc(PyObject* val, npy_datetimestruct* dts,
                         int* out_local, int* out_tzoffset);
 /*
  * Provides a string length to use for converting datetime

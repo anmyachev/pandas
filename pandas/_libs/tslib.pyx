@@ -20,20 +20,19 @@ import numpy as np
 cnp.import_array()
 
 import pytz
-from tslibs.np_datetime cimport pandas_datetimestruct
-
-cdef extern from "../src/datetime/np_datetime_strings.h":
-    int _string_to_dts_noexc(object val, pandas_datetimestruct* dts,
-                            int* out_local, int* out_tzoffset) except? -2
 
 from pandas._libs.util cimport (
     is_integer_object, is_float_object, is_string_object, is_datetime64_object)
 
 
-from pandas._libs.tslibs.np_datetime cimport (_string_to_dts_noexc,
+from pandas._libs.tslibs.np_datetime cimport (
     check_dts_bounds, npy_datetimestruct, _string_to_dts, dt64_to_dtstruct,
     dtstruct_to_dt64, pydatetime_to_dt64, pydate_to_dt64, get_datetime64_value)
 from pandas._libs.tslibs.np_datetime import OutOfBoundsDatetime
+
+cdef extern from "../src/datetime/np_datetime_strings.h":
+    int _string_to_dts_noexc(object val, npy_datetimestruct* dts,
+                            int* out_local, int* out_tzoffset) except? -2
 
 from pandas._libs.tslibs.parsing import parse_datetime_string
 

@@ -67,7 +67,7 @@ This file implements string parsing and creation for NumPy datetime.
  * Returns 0 on success, -1 on failure.
  */
 static int __parse_iso_8601_datetime(char *str, int len, int want_exc,
-                            pandas_datetimestruct *out,
+                            npy_datetimestruct *out,
                             int *out_local, int *out_tzoffset);
 
 int parse_iso_8601_datetime(char *str, int len,
@@ -79,7 +79,7 @@ int parse_iso_8601_datetime(char *str, int len,
 // slightly faster version of parse_iso_8601_datetime which
 // doesn't set Python exceptions but still returns -1 on error
 int parse_iso_8601_datetime_noexc(char *str, int len,
-                            pandas_datetimestruct *out,
+                            npy_datetimestruct *out,
                             int *out_local, int *out_tzoffset) {
     return __parse_iso_8601_datetime(str, len, 0, out, out_local, out_tzoffset);
 }
@@ -89,11 +89,7 @@ int parse_iso_8601_datetime_noexc(char *str, int len,
 // if a date cannot be parsed, but it does raise ValueError if
 // "val" supplied is not a valid ASCII string.
 // Caller must check that return value == 0 to determine if parsing succeeded.
-// NOTE: to stop exception propagation when date parsing failed
-// this function is marked to cause an exception on a return value
-// that can never happen in a real life.
-
-int _string_to_dts_noexc(PyObject* val, pandas_datetimestruct* dts,
+int _string_to_dts_noexc(PyObject* val, npy_datetimestruct* dts,
                         int* out_local, int* out_tzoffset) {
     int length, result;
     char *tmp;
@@ -123,7 +119,7 @@ int _string_to_dts_noexc(PyObject* val, pandas_datetimestruct* dts,
 }
 
 static int __parse_iso_8601_datetime(char *str, int len, int want_exc,
-                            pandas_datetimestruct *out,
+                            npy_datetimestruct *out,
                             int *out_local, int *out_tzoffset) {
     int year_leap = 0;
     int i, numdigits;
