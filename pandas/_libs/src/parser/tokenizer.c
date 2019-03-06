@@ -622,13 +622,13 @@ static int parser_buffer_bytes(register parser_t *self, size_t nbytes) {
 #define PUSH_CHAR(c)                                                          \
     TRACE(                                                                    \
         ("PUSH_CHAR: Pushing %c, slen= %d, stream_cap=%zu, stream_len=%zu\n", \
-         c, slen, self.stream_cap, self.stream_len))                          \
-    if (slen >= self.stream_cap) {                                            \
+         c, slen, self->stream_cap, self->stream_len))                        \
+    if (slen >= self->stream_cap) {                                           \
         TRACE(("PUSH_CHAR: ERROR!!! slen(%d) >= stream_cap(%d)\n", slen,      \
-               self.stream_cap))                                              \
+               self->stream_cap))                                             \
         int64_t bufsize = 100;                                                \
-        self.error_msg = (char *)malloc(bufsize);                             \
-        snprintf(self.error_msg, bufsize,                                     \
+        self->error_msg = (char *)malloc(bufsize);                            \
+        snprintf(self->error_msg, bufsize,                                    \
                  "Buffer overflow caught - possible malformed input file.\n");\
         return PARSER_OUT_OF_MEMORY;                                          \
     }                                                                         \
@@ -638,37 +638,37 @@ static int parser_buffer_bytes(register parser_t *self, size_t nbytes) {
 // This is a little bit of a hack but works for now
 
 #define END_FIELD()                           \
-    self.stream_len = slen;                   \
-    if (end_field(&self) < 0) {               \
+    self->stream_len = slen;                  \
+    if (end_field(self) < 0) {                \
         goto parsingerror;                    \
     }                                         \
-    stream = self.stream + self.stream_len;   \
-    slen = self.stream_len;
+    stream = self->stream + self->stream_len; \
+    slen = self->stream_len;
 
 #define END_LINE_STATE(STATE)                                        \
-    self.stream_len = slen;                                          \
-    if (end_line(&self) < 0) {                                       \
+    self->stream_len = slen;                                         \
+    if (end_line(self) < 0) {                                        \
         goto parsingerror;                                           \
     }                                                                \
-    stream = self.stream + self.stream_len;                          \
-    slen = self.stream_len;                                          \
-    self.state = STATE;                                              \
-    if (line_limit > 0 && self.lines == start_lines + (int64_t)line_limit) {  \
+    stream = self->stream + self->stream_len;                        \
+    slen = self->stream_len;                                         \
+    self->state = STATE;                                             \
+    if (line_limit > 0 && self->lines == start_lines + (int64_t)line_limit) {  \
         goto linelimit;                                              \
     }
 
 #define END_LINE_AND_FIELD_STATE(STATE)                              \
-    self.stream_len = slen;                                          \
-    if (end_line(&self) < 0) {                                        \
+    self->stream_len = slen;                                         \
+    if (end_line(self) < 0) {                                        \
         goto parsingerror;                                           \
     }                                                                \
-    if (end_field(&self) < 0) {                                       \
+    if (end_field(self) < 0) {                                       \
         goto parsingerror;                                           \
     }                                                                \
-    stream = self.stream + self.stream_len;                          \
-    slen = self.stream_len;                                          \
-    self.state = STATE;                                             \
-    if (line_limit > 0 && self.lines == start_lines + (int64_t)line_limit) { \
+    stream = self->stream + self->stream_len;                        \
+    slen = self->stream_len;                                         \
+    self->state = STATE;                                             \
+    if (line_limit > 0 && self->lines == start_lines + (int64_t)line_limit) { \
         goto linelimit;                                              \
     }
 
@@ -677,38 +677,40 @@ static int parser_buffer_bytes(register parser_t *self, size_t nbytes) {
 #define IS_WHITESPACE(c) ((c == ' ' || c == '\t'))
 
 #define IS_TERMINATOR(c)                            \
-    (c == line_terminator)
+    ((self->lineterminator == '\0' && c == '\n') || \
+     (self->lineterminator != '\0' && c == self->lineterminator))
 
-#define IS_QUOTE(c) ((c == self.quotechar && self.quoting != QUOTE_NONE))
+#define IS_QUOTE(c) ((c == self->quotechar && self->quoting != QUOTE_NONE))
 
 // don't parse '\r' with a custom line terminator
-#define IS_CARRIAGE(c) (c == carriage_symbol)
+#define IS_CARRIAGE(c) ((self->lineterminator == '\0' && c == '\r'))
 
-#define IS_COMMENT_CHAR(c) (c == comment_symbol)
+#define IS_COMMENT_CHAR(c) \
+    ((self->commentchar != '\0' && c == self->commentchar))
 
-#define IS_ESCAPE_CHAR(c) (c == escape_symbol)
+#define IS_ESCAPE_CHAR(c) ((self->escapechar != '\0' && c == self->escapechar))
 
 #define IS_SKIPPABLE_SPACE(c) \
-    ((!self.delim_whitespace && c == ' ' && self.skipinitialspace))
+    ((!self->delim_whitespace && c == ' ' && self->skipinitialspace))
 
 // applied when in a field
 #define IS_DELIMITER(c)                                   \
-    ((!self.delim_whitespace && c == self.delimiter) || \
-     (self.delim_whitespace && IS_WHITESPACE(c)))
+    ((!self->delim_whitespace && c == self->delimiter) || \
+     (self->delim_whitespace && IS_WHITESPACE(c)))
 
 #define _TOKEN_CLEANUP()                                                \
-    self.stream_len = slen;                                             \
-    self.datapos = i;                                                   \
-    TRACE(("_TOKEN_CLEANUP: datapos: %d, datalen: %d\n", self.datapos,  \
-           self.datalen));
+    self->stream_len = slen;                                            \
+    self->datapos = i;                                                  \
+    TRACE(("_TOKEN_CLEANUP: datapos: %d, datalen: %d\n", self->datapos, \
+           self->datalen));
 
 #define CHECK_FOR_BOM()                                                   \
     if (*buf == '\xef' && *(buf + 1) == '\xbb' && *(buf + 2) == '\xbf') { \
         buf += 3;                                                         \
-        self.datapos += 3;                                               \
+        self->datapos += 3;                                               \
     }
 
-int skip_this_line(register parser_t *self, int64_t rownum) {
+int skip_this_line(parser_t *self, int64_t rownum) {
     int should_skip;
     PyObject *result;
     PyGILState_STATE state;
@@ -742,57 +744,47 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
     int should_skip;
     char c;
     char *stream;
+    char *buf = self->data + self->datapos;
 
-    parser_t self = *p_self;
-
-    char *buf = self.data + self.datapos;
-    const char line_terminator = (self.lineterminator == '\0') ? '\n' : self.lineterminator;
-
-    // 1000 is something that couldn't fit in "char"
-    const int carriage_symbol = (self.lineterminator == '\0') ? '\r' : 1000;
-    const int comment_symbol = (self.commentchar != '\0') ? self.commentchar : 1000;
-    const int escape_symbol = (self.escapechar!= '\0') ? self.escapechar : 1000;
-
-    if (make_stream_space(&self, self.datalen - self.datapos) < 0) {
+    if (make_stream_space(self, self->datalen - self->datapos) < 0) {
         int64_t bufsize = 100;
-        self.error_msg = (char *)malloc(bufsize);
-        snprintf(self.error_msg, bufsize, "out of memory");
-        *p_self = self;
+        self->error_msg = (char *)malloc(bufsize);
+        snprintf(self->error_msg, bufsize, "out of memory");
         return -1;
     }
 
-    stream = self.stream + self.stream_len;
-    slen = self.stream_len;
+    stream = self->stream + self->stream_len;
+    slen = self->stream_len;
 
     TRACE(("%s\n", buf));
 
-    if (self.file_lines == 0) {
+    if (self->file_lines == 0) {
         CHECK_FOR_BOM();
     }
 
-    for (i = self.datapos; i < self.datalen; ++i) {
+    for (i = self->datapos; i < self->datalen; ++i) {
         // next character in file
         c = *buf++;
 
         TRACE(
             ("tokenize_bytes - Iter: %d Char: 0x%x Line %d field_count %d, "
              "state %d\n",
-             i, c, self.file_lines + 1, self.line_fields[self.lines],
-             self.state));
+             i, c, self->file_lines + 1, self->line_fields[self->lines],
+             self->state));
 
-        switch (self.state) {
+        switch (self->state) {
             case START_FIELD_IN_SKIP_LINE:
                 if (IS_TERMINATOR(c)) {
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
-                    self.file_lines++;
-                    self.state = EAT_CRNL_NOP;
+                    self->file_lines++;
+                    self->state = EAT_CRNL_NOP;
                 } else if (IS_QUOTE(c)) {
-                    self.state = IN_QUOTED_FIELD_IN_SKIP_LINE;
+                    self->state = IN_QUOTED_FIELD_IN_SKIP_LINE;
                 } else if (IS_DELIMITER(c)) {
                     // Do nothing, we're starting a new field again.
                 } else {
-                    self.state = IN_FIELD_IN_SKIP_LINE;
+                    self->state = IN_FIELD_IN_SKIP_LINE;
                 }
                 break;
 
@@ -800,62 +792,62 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                 if (IS_TERMINATOR(c)) {
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
-                    self.file_lines++;
-                    self.state = EAT_CRNL_NOP;
+                    self->file_lines++;
+                    self->state = EAT_CRNL_NOP;
                 } else if (IS_DELIMITER(c)) {
-                    self.state = START_FIELD_IN_SKIP_LINE;
+                    self->state = START_FIELD_IN_SKIP_LINE;
                 }
                 break;
 
             case IN_QUOTED_FIELD_IN_SKIP_LINE:
                 if (IS_QUOTE(c)) {
-                    if (self.doublequote) {
-                        self.state = QUOTE_IN_QUOTED_FIELD_IN_SKIP_LINE;
+                    if (self->doublequote) {
+                        self->state = QUOTE_IN_QUOTED_FIELD_IN_SKIP_LINE;
                     } else {
-                        self.state = IN_FIELD_IN_SKIP_LINE;
+                        self->state = IN_FIELD_IN_SKIP_LINE;
                     }
                 }
                 break;
 
             case QUOTE_IN_QUOTED_FIELD_IN_SKIP_LINE:
                 if (IS_QUOTE(c)) {
-                    self.state = IN_QUOTED_FIELD_IN_SKIP_LINE;
+                    self->state = IN_QUOTED_FIELD_IN_SKIP_LINE;
                 } else if (IS_TERMINATOR(c)) {
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
-                    self.file_lines++;
-                    self.state = EAT_CRNL_NOP;
+                    self->file_lines++;
+                    self->state = EAT_CRNL_NOP;
                 } else if (IS_DELIMITER(c)) {
-                    self.state = START_FIELD_IN_SKIP_LINE;
+                    self->state = START_FIELD_IN_SKIP_LINE;
                 } else {
-                    self.state = IN_FIELD_IN_SKIP_LINE;
+                    self->state = IN_FIELD_IN_SKIP_LINE;
                 }
                 break;
 
             case WHITESPACE_LINE:
                 if (IS_TERMINATOR(c)) {
-                    self.file_lines++;
-                    self.state = START_RECORD;
+                    self->file_lines++;
+                    self->state = START_RECORD;
                     break;
                 } else if (IS_CARRIAGE(c)) {
-                    self.file_lines++;
-                    self.state = EAT_CRNL_NOP;
+                    self->file_lines++;
+                    self->state = EAT_CRNL_NOP;
                     break;
-                } else if (!self.delim_whitespace) {
-                    if (IS_WHITESPACE(c) && c != self.delimiter) {
+                } else if (!self->delim_whitespace) {
+                    if (IS_WHITESPACE(c) && c != self->delimiter) {
                     } else {  // backtrack
                         // use i + 1 because buf has been incremented but not i
                         do {
                             --buf;
                             --i;
-                        } while (i + 1 > self.datapos && !IS_TERMINATOR(*buf));
+                        } while (i + 1 > self->datapos && !IS_TERMINATOR(*buf));
 
                         // reached a newline rather than the beginning
                         if (IS_TERMINATOR(*buf)) {
                             ++buf;  // move pointer to first char after newline
                             ++i;
                         }
-                        self.state = START_FIELD;
+                        self->state = START_FIELD;
                     }
                     break;
                 }
@@ -864,16 +856,16 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
             case EAT_WHITESPACE:
                 if (IS_TERMINATOR(c)) {
                     END_LINE();
-                    self.state = START_RECORD;
+                    self->state = START_RECORD;
                     break;
                 } else if (IS_CARRIAGE(c)) {
-                    self.state = EAT_CRNL;
+                    self->state = EAT_CRNL;
                     break;
                 } else if (IS_COMMENT_CHAR(c)) {
-                    self.state = EAT_COMMENT;
+                    self->state = EAT_COMMENT;
                     break;
                 } else if (!IS_WHITESPACE(c)) {
-                    self.state = START_FIELD;
+                    self->state = START_FIELD;
                     // fall through to subsequent state
                 } else {
                     // if whitespace char, keep slurping
@@ -882,15 +874,15 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
 
             case START_RECORD:
                 // start of record
-                should_skip = skip_this_line(&self, self.file_lines);
+                should_skip = skip_this_line(self, self->file_lines);
 
                 if (should_skip == -1) {
                     goto parsingerror;
                 } else if (should_skip) {
                     if (IS_QUOTE(c)) {
-                        self.state = IN_QUOTED_FIELD_IN_SKIP_LINE;
+                        self->state = IN_QUOTED_FIELD_IN_SKIP_LINE;
                     } else {
-                        self.state = IN_FIELD_IN_SKIP_LINE;
+                        self->state = IN_FIELD_IN_SKIP_LINE;
 
                         if (IS_TERMINATOR(c)) {
                             END_LINE();
@@ -899,33 +891,33 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                     break;
                 } else if (IS_TERMINATOR(c)) {
                     // \n\r possible?
-                    if (self.skip_empty_lines) {
-                        self.file_lines++;
+                    if (self->skip_empty_lines) {
+                        self->file_lines++;
                     } else {
                         END_LINE();
                     }
                     break;
                 } else if (IS_CARRIAGE(c)) {
-                    if (self.skip_empty_lines) {
-                        self.file_lines++;
-                        self.state = EAT_CRNL_NOP;
+                    if (self->skip_empty_lines) {
+                        self->file_lines++;
+                        self->state = EAT_CRNL_NOP;
                     } else {
-                        self.state = EAT_CRNL;
+                        self->state = EAT_CRNL;
                     }
                     break;
                 } else if (IS_COMMENT_CHAR(c)) {
-                    self.state = EAT_LINE_COMMENT;
+                    self->state = EAT_LINE_COMMENT;
                     break;
                 } else if (IS_WHITESPACE(c)) {
-                    if (self.delim_whitespace) {
-                        if (self.skip_empty_lines) {
-                            self.state = WHITESPACE_LINE;
+                    if (self->delim_whitespace) {
+                        if (self->skip_empty_lines) {
+                            self->state = WHITESPACE_LINE;
                         } else {
-                            self.state = EAT_WHITESPACE;
+                            self->state = EAT_WHITESPACE;
                         }
                         break;
-                    } else if (c != self.delimiter && self.skip_empty_lines) {
-                        self.state = WHITESPACE_LINE;
+                    } else if (c != self->delimiter && self->skip_empty_lines) {
+                        self->state = WHITESPACE_LINE;
                         break;
                     }
                     // fall through
@@ -933,7 +925,7 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
 
                 // normal character - fall through
                 // to handle as START_FIELD
-                self.state = START_FIELD;
+                self->state = START_FIELD;
 
             case START_FIELD:
                 // expecting field
@@ -942,44 +934,44 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
                     END_FIELD();
-                    self.state = EAT_CRNL;
+                    self->state = EAT_CRNL;
                 } else if (IS_QUOTE(c)) {
                     // start quoted field
-                    self.state = IN_QUOTED_FIELD;
+                    self->state = IN_QUOTED_FIELD;
                 } else if (IS_ESCAPE_CHAR(c)) {
                     // possible escaped character
-                    self.state = ESCAPED_CHAR;
+                    self->state = ESCAPED_CHAR;
                 } else if (IS_SKIPPABLE_SPACE(c)) {
                     // ignore space at start of field
                 } else if (IS_DELIMITER(c)) {
-                    if (self.delim_whitespace) {
-                        self.state = EAT_WHITESPACE;
+                    if (self->delim_whitespace) {
+                        self->state = EAT_WHITESPACE;
                     } else {
                         // save empty field
                         END_FIELD();
                     }
                 } else if (IS_COMMENT_CHAR(c)) {
                     END_FIELD();
-                    self.state = EAT_COMMENT;
+                    self->state = EAT_COMMENT;
                 } else {
                     // begin new unquoted field
                     PUSH_CHAR(c);
-                    self.state = IN_FIELD;
+                    self->state = IN_FIELD;
                 }
                 break;
 
             case ESCAPED_CHAR:
                 PUSH_CHAR(c);
-                self.state = IN_FIELD;
+                self->state = IN_FIELD;
                 break;
 
             case EAT_LINE_COMMENT:
                 if (IS_TERMINATOR(c)) {
-                    self.file_lines++;
-                    self.state = START_RECORD;
+                    self->file_lines++;
+                    self->state = START_RECORD;
                 } else if (IS_CARRIAGE(c)) {
-                    self.file_lines++;
-                    self.state = EAT_CRNL_NOP;
+                    self->file_lines++;
+                    self->state = EAT_CRNL_NOP;
                 }
                 break;
 
@@ -990,22 +982,22 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
                     END_FIELD();
-                    self.state = EAT_CRNL;
+                    self->state = EAT_CRNL;
                 } else if (IS_ESCAPE_CHAR(c)) {
                     // possible escaped character
-                    self.state = ESCAPED_CHAR;
+                    self->state = ESCAPED_CHAR;
                 } else if (IS_DELIMITER(c)) {
                     // end of field - end of line not reached yet
                     END_FIELD();
 
-                    if (self.delim_whitespace) {
-                        self.state = EAT_WHITESPACE;
+                    if (self->delim_whitespace) {
+                        self->state = EAT_WHITESPACE;
                     } else {
-                        self.state = START_FIELD;
+                        self->state = START_FIELD;
                     }
                 } else if (IS_COMMENT_CHAR(c)) {
                     END_FIELD();
-                    self.state = EAT_COMMENT;
+                    self->state = EAT_COMMENT;
                 } else {
                     // normal character - save in field
                     PUSH_CHAR(c);
@@ -1016,14 +1008,14 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                 // in quoted field
                 if (IS_ESCAPE_CHAR(c)) {
                     // possible escape character
-                    self.state = ESCAPE_IN_QUOTED_FIELD;
+                    self->state = ESCAPE_IN_QUOTED_FIELD;
                 } else if (IS_QUOTE(c)) {
-                    if (self.doublequote) {
+                    if (self->doublequote) {
                         // double quote - " represented by ""
-                        self.state = QUOTE_IN_QUOTED_FIELD;
+                        self->state = QUOTE_IN_QUOTED_FIELD;
                     } else {
                         // end of quote part of field
-                        self.state = IN_FIELD;
+                        self->state = IN_FIELD;
                     }
                 } else {
                     // normal character - save in field
@@ -1033,7 +1025,7 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
 
             case ESCAPE_IN_QUOTED_FIELD:
                 PUSH_CHAR(c);
-                self.state = IN_QUOTED_FIELD;
+                self->state = IN_QUOTED_FIELD;
                 break;
 
             case QUOTE_IN_QUOTED_FIELD:
@@ -1042,29 +1034,29 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                     // save "" as "
 
                     PUSH_CHAR(c);
-                    self.state = IN_QUOTED_FIELD;
+                    self->state = IN_QUOTED_FIELD;
                 } else if (IS_DELIMITER(c)) {
                     // end of field - end of line not reached yet
                     END_FIELD();
 
-                    if (self.delim_whitespace) {
-                        self.state = EAT_WHITESPACE;
+                    if (self->delim_whitespace) {
+                        self->state = EAT_WHITESPACE;
                     } else {
-                        self.state = START_FIELD;
+                        self->state = START_FIELD;
                     }
                 } else if (IS_TERMINATOR(c)) {
                     END_FIELD();
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
                     END_FIELD();
-                    self.state = EAT_CRNL;
-                } else if (!self.strict) {
+                    self->state = EAT_CRNL;
+                } else if (!self->strict) {
                     PUSH_CHAR(c);
-                    self.state = IN_FIELD;
+                    self->state = IN_FIELD;
                 } else {
                     int64_t bufsize = 100;
-                    self.error_msg = (char *)malloc(bufsize);
-                    snprintf(self.error_msg, bufsize,
+                    self->error_msg = (char *)malloc(bufsize);
+                    snprintf(self->error_msg, bufsize,
                             "delimiter expected after quote in quote");
                     goto parsingerror;
                 }
@@ -1074,7 +1066,7 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                 if (IS_TERMINATOR(c)) {
                     END_LINE();
                 } else if (IS_CARRIAGE(c)) {
-                    self.state = EAT_CRNL;
+                    self->state = EAT_CRNL;
                 }
                 break;
 
@@ -1084,14 +1076,14 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                 if (c == '\n') {
                     END_LINE();
                 } else if (IS_DELIMITER(c)) {
-                    if (self.delim_whitespace) {
+                    if (self->delim_whitespace) {
                         END_LINE_STATE(EAT_WHITESPACE);
                     } else {
                         // Handle \r-delimited files
                         END_LINE_AND_FIELD_STATE(START_FIELD);
                     }
                 } else {
-                    if (self.delim_whitespace) {
+                    if (self->delim_whitespace) {
                         /* XXX
                         * first character of a new record--need to back up and
                         * reread
@@ -1104,19 +1096,19 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
                         // \r line terminator
                         // UGH. we don't actually want
                         // to consume the token. fix this later
-                        self.stream_len = slen;
-                        if (end_line(&self) < 0) {
+                        self->stream_len = slen;
+                        if (end_line(self) < 0) {
                             goto parsingerror;
                         }
 
-                        stream = self.stream + self.stream_len;
-                        slen = self.stream_len;
-                        self.state = START_RECORD;
+                        stream = self->stream + self->stream_len;
+                        slen = self->stream_len;
+                        self->state = START_RECORD;
 
                         --i;
                         buf--;  // let's try this character again (HACK!)
                         if (line_limit > 0 &&
-                            self.lines == start_lines + line_limit) {
+                            self->lines == start_lines + line_limit) {
                             goto linelimit;
                         }
                     }
@@ -1126,7 +1118,7 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
             // only occurs with non-custom line terminator,
             // which is why we directly check for '\n'
             case EAT_CRNL_NOP:  // inside an ignored comment line
-                self.state = START_RECORD;
+                self->state = START_RECORD;
                 // \r line terminator -- parse this character again
                 if (c != '\n' && !IS_DELIMITER(c)) {
                     --i;
@@ -1139,7 +1131,6 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
     }
 
     _TOKEN_CLEANUP();
-    *p_self = self;
 
     TRACE(("Finished tokenizing input\n"))
 
@@ -1148,14 +1139,12 @@ int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lin
 parsingerror:
     i++;
     _TOKEN_CLEANUP();
-    *p_self = self;
 
     return -1;
 
 linelimit:
     i++;
     _TOKEN_CLEANUP();
-    *p_self = self;
 
     return 0;
 }
