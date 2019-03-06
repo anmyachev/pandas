@@ -183,8 +183,7 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
         }
         if (has_freq) {
             _year = parse_4digit(buf);
-            _month = parse_2digit(buf + 5);
-
+            _month = parse_2digit(buf + 4);
             result = ((_year != -1) && (_month != -1)) ? 0 : -1;
             if (result != -1) {
                 *year = _year;

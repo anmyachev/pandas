@@ -268,10 +268,9 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
             return ret, ret, 'month'
         except ValueError:
             pass
-    
     result = parse_month_year_date(date_string, &year, &month)
     if result == 0:
-        try: 
+        try:
             ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
             return ret, ret, 'month'
         except ValueError:
