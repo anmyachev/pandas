@@ -43,12 +43,10 @@ int index_Q(const char* string_with_index, int start_position,
     int i;
 
     if (length > 0) {
-        if (start_position > end_position) {
-            return -2;
-        }
-        if ((start_position < 0) || (end_position > length)) {
-            return -3;
-        }
+        if (start_position > end_position) return -2;
+        if (start_position < 0) return -3;
+        if (end_position > length) end_position = length;
+
         ch = string_with_index + start_position;
         for (i = start_position; i < end_position; ++i, ++ch) {
             if ((*ch) == 'Q' ||  (*ch) == 'q') return i;
