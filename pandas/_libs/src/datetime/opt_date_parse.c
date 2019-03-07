@@ -85,7 +85,7 @@ int parse_date_quarter(PyObject* parse_string, int* year, int* quarter) {
         // r'(\d\d)-?Q(\d)'
         if ((length == 4) || ((length == 5) && (buf[index - 1] == '-'))) {
             _quarter = parse_1digit(buf + length - 1);
-            _year = 2000 + parse_2digit(buf + length - 2);
+            _year = 2000 + parse_2digit(buf);
         } else {
             return -1;
         }
