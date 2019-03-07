@@ -8,14 +8,36 @@
 
 static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
                                        PyArrayObject *result,
-                                       int keep_numbers) {
-    int needs_decref = 0;
+                                       int keep_trivial_numbers) {
+    int needs_decref = 0, do_convert = 1;
     if (item == NULL) {
         return 0;
     }
-    if (!keep_numbers || !(PyFloat_Check(item) || PyLong_Check(item))) {
+    if (keep_trivial_numbers) {
+        // don't convert an integer if it's zero, don't convert a float if it's zero or NaN
+        if (PyLong_Check(item)) {
+            PyLongObject* v = (PyLongObject*)item;
+            switch (Py_SIZE(v)) {
+            case 0:
+                do_convert = 0;
+                break;
+            case 1: // fallthrough
+            case -1:
+                if (v->ob_digit[0] == 0) {
+                    do_convert = 0;
+                }
+            }
+        } else if (PyFloat_Check(item)) {
+            double v = PyFloat_AS_DOUBLE(item);
+            if (v == 0.0 || v != v) {
+                do_convert = 0;
+            }
+        }
+    }
+
+    if (do_convert) {
 #if PY_MAJOR_VERSION == 2
-        if (!PyString_Check(item) && !PyUnicode_Check(item)) {
+#error Python 2 unsupported
 #else
         if (!PyUnicode_Check(item)) {
 #endif
@@ -64,22 +86,22 @@ static PyObject* free_arrays(PyObject** arrays, Py_ssize_t size) {
 static PyObject* concat_date_cols(PyObject *self, PyObject *args,
                                   PyObject *kwds) {
     PyObject *sequence = NULL;
-    PyObject *py_keep_numbers = NULL;
+    PyObject *py_keep_trivial_numbers = NULL;
     PyArrayObject *result = NULL;
     Py_ssize_t sequence_size = 0;
-    int keep_numbers;
-    char* kwlist[] = {"", "keep_numbers", NULL};
+    int keep_trivial_numbers;
+    char* kwlist[] = {"", "keep_trivial_numbers", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O", kwlist,
-                                     &sequence, &py_keep_numbers)) {
+                                     &sequence, &py_keep_trivial_numbers)) {
         return NULL;
     }
     if (!PySequence_Check(sequence)) {
         PyErr_SetString(PyExc_TypeError, "argument must be sequence");
         return NULL;
     }
-    keep_numbers = (py_keep_numbers != NULL) ? \
-            PyObject_IsTrue(py_keep_numbers) : 0;
+    keep_trivial_numbers = (py_keep_trivial_numbers != NULL) ? \
+            PyObject_IsTrue(py_keep_trivial_numbers) : 0;
 
     sequence_size = PySequence_Size(sequence);
     if (sequence_size == -1) {
@@ -115,7 +137,7 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
             for (i = 0; i < array_size; ++i) {
                 PyObject *item = PyArray_GETITEM(ndarray,
                                                  PyArray_GETPTR1(ndarray, i));
-                if (!convert_and_set_item(item, i, result, keep_numbers)) {
+                if (!convert_and_set_item(item, i, result, keep_trivial_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
                     Py_DECREF(item);
@@ -136,7 +158,7 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
 
             for (i = 0; i < array_size; ++i) {
                 PyObject* item = PySequence_Fast_GET_ITEM(fast_array, i);
-                if (!convert_and_set_item(item, i, result, keep_numbers)) {
+                if (!convert_and_set_item(item, i, result, keep_trivial_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
                     Py_DECREF(fast_array);
