@@ -337,7 +337,7 @@ static int inline parse_2digit(const char* s) {
 
 static char not_datelike[sizeof(char) * 256];
 
-static PyObject* does_string_look_like_datetime(PyObject* unused,
+static PyObject* _does_string_look_like_datetime(PyObject* unused,
                                                 PyObject* arg) {
     PyObject* str = NULL;
     char* buf = NULL;
@@ -362,7 +362,7 @@ static PyObject* does_string_look_like_datetime(PyObject* unused,
 #else
     if (!PyUnicode_CheckExact(arg) || !PyUnicode_IS_READY(arg)) {
         PyErr_SetString(PyExc_ValueError,
-                        "does_string_look_like_datetime expects a string");
+                        "_does_string_look_like_datetime expects a string");
         return NULL;
     }
     buf = PyUnicode_DATA(arg);
@@ -432,7 +432,7 @@ static PyMethodDef module_methods[] = {
         "concatenates date cols and returns numpy array"
     },
     {
-        "does_string_look_like_datetime", does_string_look_like_datetime,
+        "_does_string_look_like_datetime", _does_string_look_like_datetime,
         METH_O,
         "checks if string looks like a datetime"
     },
