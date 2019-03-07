@@ -1562,7 +1562,7 @@ double xstrtod(const char *str, char **endptr, char decimal, char sci,
     num_decimals = 0;
 
     // Process string of digits.
-    while (isdigit_ascii(*p) && num_decimals <= max_int_decimal_digits) {
+    while (isdigit_ascii(*p) && num_digits <= max_int_decimal_digits) {
         i_number = i_number * 10 + (*p - '0');
         p++;
         num_digits++;
@@ -1571,7 +1571,7 @@ double xstrtod(const char *str, char **endptr, char decimal, char sci,
     }
     number = i_number;
 
-    if (num_decimals > max_int_decimal_digits) {
+    if (num_digits > max_int_decimal_digits) {
         // process what's left as double
         while (isdigit_ascii(*p)) {
             number = number * 10. + (*p - '0');
