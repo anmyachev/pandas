@@ -193,6 +193,9 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
     return -1;
 }
 
+#define MAX_DAYS_IN_MONTH 31
+#define MAX_MONTH 12
+
 PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
                              PyObject* tzinfo, PyObject* DateParseError) {
     char* buf;
@@ -221,7 +224,22 @@ PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
                 (year = parse_4digit(&buf[6])) == -1) {
             Py_RETURN_NONE;
         }
-        switch (PyObject_IsTrue(dayfirst)) {
+
+        if (part1 < 1 || part2 < 1 || 
+                part1 > MAX_DAYS_IN_MONTH || part2 > MAX_DAYS_IN_MONTH ||
+                (part1 > MAX_MONTH && part2 > MAX_MONTH)) {
+            return PyErr_Format(DateParseError,
+                "Invalid date specified (%d/%d)", part1, part2);
+        }
+
+        if (part1 > MAX_MONTH) {
+            day = part1;
+            month = part2;
+        } else if (part2 > MAX_MONTH) {
+            day = part2;
+            month = part1;
+        } else {
+            switch (PyObject_IsTrue(dayfirst)) {
             case 1:
                 day = part1;
                 month = part2;
@@ -232,13 +250,8 @@ PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
                 break;
             default:
                 return NULL;
+            }
         }
-    }
-    // smoke-validate day and month to throw away values that can never be valid
-    if (day < 1 || day > 31 || month < 1 || month > 12) {
-        return PyErr_Format(DateParseError,
-                            "Invalid day (%d) or month (%d) specified",
-                            day, month);
     }
 
     if (PyDateTimeAPI == NULL) {
