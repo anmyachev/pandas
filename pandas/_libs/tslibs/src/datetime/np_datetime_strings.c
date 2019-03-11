@@ -86,8 +86,7 @@ int parse_iso_8601_datetime_noexc(char *str, int len,
 
 
 // Slightly faster version that doesn't raise a ValueError
-// if a date cannot be parsed, but it does raise ValueError if
-// "val" supplied is not a valid ASCII string.
+// if a date cannot be parsed, it reports various errors via return result.
 // Caller must check that return value == 0 to determine if parsing succeeded.
 int _string_to_dts_noexc(PyObject* val, npy_datetimestruct* dts,
                         int* out_local, int* out_tzoffset) {
@@ -101,7 +100,10 @@ int _string_to_dts_noexc(PyObject* val, npy_datetimestruct* dts,
     if (PyUnicode_Check(val)) {
         if (!PyUnicode_CheckExact(val) || !PyUnicode_IS_ASCII(val)) {
             ascii_string = PyUnicode_AsASCIIString(val);
-            if (ascii_string == NULL) return -2;
+            if (ascii_string == NULL) {
+                PyErr_Clear();
+                return -2;
+            }
             val = ascii_string;
         }
 #endif

@@ -32,7 +32,7 @@ from pandas._libs.tslibs.np_datetime import OutOfBoundsDatetime
 
 cdef extern from "../src/datetime/np_datetime_strings.h":
     int _string_to_dts_noexc(object val, npy_datetimestruct* dts,
-                            int* out_local, int* out_tzoffset) except? -2
+                            int* out_local, int* out_tzoffset)
 
 from pandas._libs.tslibs.parsing import parse_datetime_string
 
