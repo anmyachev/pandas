@@ -30,7 +30,8 @@ cdef extern from "Python.h":
 
 import numpy as np
 cimport numpy as cnp
-from numpy cimport ndarray, uint8_t, uint64_t, int64_t, float64_t, PyArray_Concatenate
+from numpy cimport (ndarray, uint8_t, uint64_t,
+                    int64_t, float64_t, PyArray_Concatenate)
 cnp.import_array()
 
 from pandas._libs.util cimport UINT64_MAX, INT64_MAX, INT64_MIN
@@ -1588,7 +1589,7 @@ cdef _string_box_decode(parser_t *parser, int64_t col,
 
         if na_filter:
             if kh_get_str_starts_item(na_hashset, word):
-            # in the hash table
+                # in the hash table
                 na_count += 1
                 result[i] = NA
                 continue
@@ -1651,7 +1652,7 @@ cdef _categorical_convert(parser_t *parser, int64_t col,
 
             if na_filter:
                 if kh_get_str_starts_item(na_hashset, word):
-                # is in NA values
+                    # is in NA values
                     na_count += 1
                     codes[i] = NA
                     continue
@@ -1798,7 +1799,8 @@ cdef inline int _try_double_nogil(parser_t *parser,
                 data[0] = NA
             else:
                 data[0] = double_converter(word, &p_end, parser.decimal,
-                                           parser.sci, parser.thousands, 1, &error)
+                                           parser.sci, parser.thousands,
+                                           1, &error)
                 if error != 0 or p_end == word or p_end[0]:
                     error = 0
                     if (strcasecmp(word, cinf) == 0 or
@@ -2079,7 +2081,6 @@ cdef kh_str_starts_t* kset_from_list(list values) except NULL:
 
     table = kh_init_str_starts()
 
-
     for i in range(len(values)):
         val = values[i]
 
@@ -2202,7 +2203,7 @@ def _concatenate_chunks(list chunks):
         warning_message = " ".join([
             "Columns (%s) have mixed types." % warning_names,
             "Specify dtype option on import or set low_memory=False."
-          ])
+        ])
         warnings.warn(warning_message, DtypeWarning, stacklevel=8)
     return result
 

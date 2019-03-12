@@ -42,11 +42,11 @@ cdef extern from "../src/datetime/opt_date_parse.h":
     int parse_date_quarter(object parse_string, int* year, int* quarter)
     int parse_month_year_date(object parse_string, int* year, int* month)
     int parse_date_with_freq(object parse_string, object freq,
-                            object compare_with_freq, int* year, int* month)
+                             object compare_with_freq, int* year, int* month)
     object make_date_from_year_month(int year, int month, object default_date,
-                                    object default_tzinfo)
+                                     object default_tzinfo)
     object parse_slashed_date(object parse_string, object dayfirst,
-                            object tzinfo, object DateParseError)
+                              object tzinfo, object DateParseError)
 
 
 # ----------------------------------------------------------------------
@@ -102,7 +102,8 @@ def parse_datetime_string(date_string, freq=None, dayfirst=False,
                       yearfirst=yearfirst, **kwargs)
         return dt
 
-    dt = parse_slashed_date(date_string, dayfirst, _DEFAULT_TZINFO, DateParseError)
+    dt = parse_slashed_date(date_string, dayfirst,
+                            _DEFAULT_TZINFO, DateParseError)
     if dt is not None:
         return dt
 
@@ -225,7 +226,8 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     if date_len == 4:
         # parse year only like 2000
         try:
-            ret = make_date_from_year_month(int(date_string), 1, default, _DEFAULT_TZINFO)
+            ret = make_date_from_year_month(int(date_string), 1,
+                                            default, _DEFAULT_TZINFO)
             return ret, ret, 'year'
         except ValueError:
             pass
@@ -233,19 +235,19 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
         if 4 <= date_len <= 7:
             result = parse_date_quarter(date_string, &year, &quarter)
             if result > 0:
-            if not (1 <= quarter <= 4):
-                msg = ('Incorrect quarterly string is given, quarter must be '
-                       'between 1 and 4: {dstr}')
-                raise DateParseError(msg.format(dstr=date_string))
+                if not (1 <= quarter <= 4):
+                    msg = ('Incorrect quarterly string is given,'
+                           'quarter must be between 1 and 4: {dstr}')
+                    raise DateParseError(msg.format(dstr=date_string))
 
-            if freq is not None:
-                # hack attack, #1228
-                try:
-                    mnum = MONTH_NUMBERS[_get_rule_month(freq)] + 1
-                except (KeyError, ValueError):
-                    msg = ('Unable to retrieve month information from given '
-                           'freq: {freq}'.format(freq=freq))
-                    raise DateParseError(msg)
+                if freq is not None:
+                    # hack attack, #1228
+                    try:
+                        mnum = MONTH_NUMBERS[_get_rule_month(freq)] + 1
+                    except (KeyError, ValueError):
+                        msg = ('Unable to retrieve month information from '
+                               'given freq: {freq}').format(freq=freq)
+                        raise DateParseError(msg)
 
                     month = (mnum + (quarter - 1) * 3) % 12 + 1
                     if month > mnum:
@@ -253,7 +255,8 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
                 else:
                     month = (quarter - 1) * 3 + 1
 
-                ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
+                ret = make_date_from_year_month(year, month, default,
+                                                _DEFAULT_TZINFO)
                 return ret, ret, 'quarter'
 
     except DateParseError:
@@ -261,17 +264,20 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
     except ValueError:
         pass
 
-    result = parse_date_with_freq(date_string, freq, COMPARE_WITH_FREQ, &year, &month)
+    result = parse_date_with_freq(date_string, freq, COMPARE_WITH_FREQ,
+                                  &year, &month)
     if result == 0:
         try:
-            ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
+            ret = make_date_from_year_month(year, month, default,
+                                            _DEFAULT_TZINFO)
             return ret, ret, 'month'
         except ValueError:
             pass
     result = parse_month_year_date(date_string, &year, &month)
     if result == 0:
         try:
-            ret = make_date_from_year_month(year, month, default, _DEFAULT_TZINFO)
+            ret = make_date_from_year_month(year, month, default,
+                                            _DEFAULT_TZINFO)
             return ret, ret, 'month'
         except ValueError:
             pass

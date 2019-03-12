@@ -225,7 +225,7 @@ PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
             Py_RETURN_NONE;
         }
 
-        if (part1 < 1 || part2 < 1 || 
+        if (part1 < 1 || part2 < 1 ||
                 part1 > MAX_DAYS_IN_MONTH || part2 > MAX_DAYS_IN_MONTH ||
                 (part1 > MAX_MONTH && part2 > MAX_MONTH)) {
             return PyErr_Format(DateParseError,

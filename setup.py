@@ -21,9 +21,11 @@ from setuptools import setup, Command, find_packages
 import versioneer
 cmdclass = versioneer.get_cmdclass()
 
+
 def is_debug_symbols_requested():
     # TODO: make a setup.py parameter
     return True
+
 
 def is_platform_windows():
     return sys.platform == 'win32' or sys.platform == 'cygwin'
@@ -374,7 +376,7 @@ class CheckingBuildExt(build_ext):
                 """.format(src=src))
 
     def build_extensions(self):
-        #self.check_cython_extensions(self.extensions)
+        self.check_cython_extensions(self.extensions)
         build_ext.build_extensions(self)
 
 
@@ -426,9 +428,19 @@ else:
 
 if is_platform_windows():
     extra_compile_args = []
+    debug_compile_args = ['/Z7']
+    debug_link_args = ['/DEBUG']
 else:
     # args to ignore warnings
     extra_compile_args = ['-Wno-unused-function']
+    debug_compile_args = ['-g']
+    debug_link_args = []
+
+extra_link_args = []
+
+if is_debug_symbols_requested():
+    extra_compile_args.extend(debug_compile_args)
+    extra_link_args.extend(debug_link_args)
 
 
 # For mac, ensure extensions are built for macos 10.9 when compiling on a
@@ -468,22 +480,6 @@ if linetrace:
 #  cython+numpy version mismatches.
 macros.append(('NPY_NO_DEPRECATED_API', '0'))
 
-
-if is_platform_windows():
-    extra_compile_args = []
-    debug_compile_args = ['/Z7']
-    debug_link_args = ['/DEBUG']
-else:
-    # args to ignore warnings
-    extra_compile_args = ['-Wno-unused-function']
-    debug_compile_args = ['-g']
-    debug_link_args = []
-
-extra_link_args = []
-
-if is_debug_symbols_requested():
-    extra_compile_args.extend(debug_compile_args)
-    extra_link_args.extend(debug_link_args)
 
 # ----------------------------------------------------------------------
 # Specification of Dependencies

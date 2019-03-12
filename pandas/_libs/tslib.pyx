@@ -32,7 +32,7 @@ from pandas._libs.tslibs.np_datetime import OutOfBoundsDatetime
 
 cdef extern from "../src/datetime/np_datetime_strings.h":
     int _string_to_dts_noexc(object val, npy_datetimestruct* dts,
-                            int* out_local, int* out_tzoffset)
+                             int* out_local, int* out_tzoffset)
 
 from pandas._libs.tslibs.parsing import parse_datetime_string
 
@@ -601,14 +601,17 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                         iresult[i] = cached
                         continue
                     if len(_cache) > 1000:
-                        # pop random item from cache to stop it from ever growing
+                        # pop random item from cache
+                        # to stop it from ever growing
                         _cache.popitem()
 
                     try:
-                        # We know for sure that "val" is a UTF8 string, so we can execute
-                        # a faster version that doesn't raise a ValueError exception if it
+                        # We know for sure that "val" is a UTF8 string,
+                        # so we can execute a faster version
+                        # that doesn't raise a ValueError exception if it
                         # was supplied with something that's not a date.
-                        string_to_dts_failed = _string_to_dts_noexc(val, &dts, &out_local, &out_tzoffset) != 0
+                        string_to_dts_failed = _string_to_dts_noexc(val, &dts,
+                                &out_local, &out_tzoffset) != 0
                         if string_to_dts_failed:
                             # An error at this point is a _parsing_ error
                             # specifically _not_ OutOfBoundsDatetime
@@ -626,7 +629,7 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                                     raise ValueError("time data {val} doesn't "
                                                      "match format specified"
                                                      .format(val=val))
-                            return values, tz_out
+                                return values, tz_out
 
                             try:
                                 py_dt = parse_datetime_string(val,
@@ -640,16 +643,18 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                                 raise TypeError("invalid string coercion to "
                                                 "datetime")
 
-                            # If the dateutil parser returned tzinfo, capture it
-                            # to check if all arguments have the same tzinfo
+                            # If the dateutil parser returned tzinfo,
+                            # capture it to check if all arguments
+                            # have the same tzinfo
                             tz = py_dt.utcoffset()
                             if tz is not None:
                                 seen_datetime_offset = 1
-                                # dateutil timezone objects cannot be hashed, so
-                                # store the UTC offsets in seconds instead
+                                # dateutil timezone objects cannot be hashed,
+                                # so store the UTC offsets in seconds instead
                                 out_tzoffset_vals.add(tz.total_seconds())
                             else:
-                                # Add a marker for naive string, to track if we are
+                                # Add a marker for naive string,
+                                # to track if we are
                                 # parsing mixed naive and aware strings
                                 out_tzoffset_vals.add('naive')
 
