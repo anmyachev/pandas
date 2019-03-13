@@ -1,10 +1,11 @@
 """ support numpy compatiblitiy across versions """
 
-import re
-import numpy as np
 from distutils.version import LooseVersion
-from pandas.compat import string_types, string_and_binary_types
+import re
 
+import numpy as np
+
+from pandas.compat import string_and_binary_types, string_types
 
 # numpy versioning
 _np_version = np.__version__

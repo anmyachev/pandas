@@ -2,6 +2,8 @@
 
 # flake8: noqa
 
+# isort:skip_file
+
 __docformat__ = 'restructuredtext'
 
 # Let users know if they're missing any of our hard dependencies

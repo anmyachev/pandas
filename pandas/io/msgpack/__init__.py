@@ -1,5 +1,7 @@
 # coding: utf-8
 
+# isort:skip_file
+
 from collections import namedtuple
 
 from pandas.io.msgpack.exceptions import *  # noqa

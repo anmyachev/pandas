@@ -14,6 +14,7 @@ import warnings
 
 import numpy as np
 
+from pandas._libs.datehelpers import concat_date_cols as _concat_date_cols
 import pandas._libs.lib as lib
 import pandas._libs.ops as libops
 import pandas._libs.parsers as parsers
@@ -46,8 +47,6 @@ from pandas.io.common import (
     _infer_compression, _validate_header_arg, get_filepath_or_buffer,
     is_file_like)
 from pandas.io.date_converters import generic_parser
-
-from pandas._libs.datehelpers import concat_date_cols as _concat_date_cols
 
 # BOM character (byte order mark)
 # This exists at the beginning of a file to indicate endianness

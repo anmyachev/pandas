@@ -24,6 +24,7 @@ Other items:
 """
 # pylint disable=W0611
 # flake8: noqa
+# isort:skip_file
 
 import re
 import functools
