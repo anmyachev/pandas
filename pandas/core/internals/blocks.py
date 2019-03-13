@@ -1833,6 +1833,15 @@ class ExtensionBlock(NonConsolidatableMixIn, Block):
 
         Dispatches to underlying ExtensionArray and re-boxes in an
         ExtensionBlock.
+
+        Parameters
+        ----------
+        periods : int
+        axis : Optional[BlockPlacement]
+
+        Returns
+        -------
+        List[ExtensionBlock]
         """
         return [
             self.make_block_same_class(

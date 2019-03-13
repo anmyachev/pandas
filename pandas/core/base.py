@@ -786,7 +786,6 @@ class IndexOpsMixin(object):
 
     @property
     def array(self):
-        # type: () -> ExtensionArray
         """
         The ExtensionArray of the data backing this Series or Index.
 

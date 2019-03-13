@@ -181,7 +181,6 @@ class ExtensionArray(object):
     # ------------------------------------------------------------------------
 
     def __getitem__(self, item):
-        # type (Any) -> Any
         """
         Select a subset of self.
 
@@ -213,7 +212,6 @@ class ExtensionArray(object):
         raise AbstractMethodError(self)
 
     def __setitem__(self, key, value):
-        # type: (Union[int, np.ndarray], Any) -> None
         """
         Set one or more values inplace.
 
@@ -261,7 +259,6 @@ class ExtensionArray(object):
         )
 
     def __len__(self):
-        # type: () -> int
         """
         Length of this array
 
@@ -286,33 +283,41 @@ class ExtensionArray(object):
     # ------------------------------------------------------------------------
     @property
     def dtype(self):
-        # type: () -> ExtensionDtype
         """
+        Returns
+        -------
         An instance of 'ExtensionDtype'.
         """
         raise AbstractMethodError(self)
 
     @property
     def shape(self):
-        # type: () -> Tuple[int, ...]
         """
-        Return a tuple of the array dimensions.
+        Returns
+        ------
+        A tuple of the array dimensions.
         """
         return (len(self),)
 
     @property
     def ndim(self):
-        # type: () -> int
         """
         Extension Arrays are only allowed to be 1-dimensional.
+
+        Returns
+        -------
+        int
         """
         return 1
 
     @property
     def nbytes(self):
-        # type: () -> int
         """
         The number of bytes needed to store this object in memory.
+
+        Returns
+        -------
+        int
         """
         # If this is expensive to compute, return an approximate lower bound
         # on the number of bytes needed.
@@ -342,7 +347,6 @@ class ExtensionArray(object):
         return np.array(self, dtype=dtype, copy=copy)
 
     def isna(self):
-        # type: () -> Union[ExtensionArray, np.ndarray]
         """
         A 1-D array indicating if each value is missing.
 
@@ -365,7 +369,6 @@ class ExtensionArray(object):
         raise AbstractMethodError(self)
 
     def _values_for_argsort(self):
-        # type: () -> ndarray
         """
         Return values for sorting.
 
@@ -597,7 +600,6 @@ class ExtensionArray(object):
         return arr.searchsorted(value, side=side, sorter=sorter)
 
     def _values_for_factorize(self):
-        # type: () -> Tuple[ndarray, Any]
         """
         Return an array and missing value suitable for factorization.
 
@@ -622,7 +624,6 @@ class ExtensionArray(object):
         return self.astype(object), np.nan
 
     def factorize(self, na_sentinel=-1):
-        # type: (int) -> Tuple[ndarray, ExtensionArray]
         """
         Encode the extension array as an enumerated type.
 
@@ -725,7 +726,6 @@ class ExtensionArray(object):
     # ------------------------------------------------------------------------
 
     def take(self, indices, allow_fill=False, fill_value=None):
-        # type: (Sequence[int], bool, Optional[Any]) -> ExtensionArray
         """
         Take elements from an array.
 
@@ -815,7 +815,6 @@ class ExtensionArray(object):
         raise AbstractMethodError(self)
 
     def copy(self, deep=False):
-        # type: (bool) -> ExtensionArray
         """
         Return a copy of the array.
 
@@ -852,7 +851,6 @@ class ExtensionArray(object):
                                dtype=self.dtype)
 
     def _formatter(self, boxed=False):
-        # type: (bool) -> Callable[[Any], Optional[str]]
         """Formatting function for scalar values.
 
         This is used in the default '__repr__'. The returned formatting
@@ -880,7 +878,6 @@ class ExtensionArray(object):
         return repr
 
     def _formatting_values(self):
-        # type: () -> np.ndarray
         # At the moment, this has to be an array since we use result.dtype
         """
         An array of values to be printed in, e.g. the Series repr
@@ -888,6 +885,10 @@ class ExtensionArray(object):
         .. deprecated:: 0.24.0
 
            Use :meth:`ExtensionArray._formatter` instead.
+
+        Returns
+        -------
+        np.ndarray
         """
         return np.array(self)
 
@@ -897,7 +898,6 @@ class ExtensionArray(object):
 
     @classmethod
     def _concat_same_type(cls, to_concat):
-        # type: (Sequence[ExtensionArray]) -> ExtensionArray
         """
         Concatenate multiple array
 
@@ -920,7 +920,6 @@ class ExtensionArray(object):
 
     @property
     def _ndarray_values(self):
-        # type: () -> np.ndarray
         """
         Internal pandas method for lossy conversion to a NumPy ndarray.
 

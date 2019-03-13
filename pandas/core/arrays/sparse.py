@@ -79,7 +79,16 @@ class SparseDtype(ExtensionDtype):
     _metadata = ('_dtype', '_fill_value', '_is_na_fill_value')
 
     def __init__(self, dtype=np.float64, fill_value=None):
-        # type: (Union[str, np.dtype, 'ExtensionDtype', type], Any) -> None
+        """
+        Parameters
+        ----------
+        dtype :      Union[str, np.dtype, 'ExtensionDtype', type]
+        fill_value : Any
+
+        Returns
+        -------
+        None
+        """
         from pandas.core.dtypes.missing import na_value_for_dtype
         from pandas.core.dtypes.common import (
             pandas_dtype, is_string_dtype, is_scalar
@@ -372,7 +381,6 @@ _sparray_doc_kwargs = dict(klass='SparseArray')
 
 
 def _get_fill(arr):
-    # type: (SparseArray) -> ndarray
     """
     Create a 0-dim ndarray containing the fill value
 
@@ -671,7 +679,17 @@ class SparseArray(PandasObject, ExtensionArray, ExtensionOpsMixin):
 
     @classmethod
     def _simple_new(cls, sparse_array, sparse_index, dtype):
-        # type: (np.ndarray, SparseIndex, SparseDtype) -> 'SparseArray'
+        """
+        Parameters
+        ----------
+        sparse_array : np.ndarray
+        sparse_index : SparseIndex
+        dtype : SparseDtype
+
+        Returns
+        -------
+        SparseArray
+        """
         new = cls([])
         new._sparse_index = sparse_index
         new._sparse_values = sparse_array

@@ -391,7 +391,8 @@ static int __parse_iso_8601_datetime(char *str, int len, int want_exc,
         if (out->sec >= 60) {
             if (want_exc) {
                 PyErr_Format(PyExc_ValueError,
-                            "Seconds out of range in datetime string \"%s\"", str);
+                             "Seconds out of range in datetime string \"%s\"",
+                             str);
             }
             goto error;
         }

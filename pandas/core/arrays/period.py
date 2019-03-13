@@ -180,7 +180,17 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
 
     @classmethod
     def _from_sequence(cls, scalars, dtype=None, copy=False):
-        # type: (Sequence[Optional[Period]], PeriodDtype, bool) -> PeriodArray
+        """
+        Parameters
+        ----------
+        scalars : Sequence[Optional[Period]]
+        dtype :   PeriodDtype
+        copy :    bool
+
+        Returns
+        -------
+        PeriodArray
+        """
         if dtype:
             freq = dtype.freq
         else:
@@ -243,7 +253,15 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
     # DatetimeLike Interface
 
     def _unbox_scalar(self, value):
-        # type: (Union[Period, NaTType]) -> int
+        """
+        Parameters
+        ----------
+        value : Union[Period, NaTType]
+
+        Returns
+        -------
+        int
+        """
         if value is NaT:
             return value.value
         elif isinstance(value, self._scalar_type):
@@ -534,12 +552,18 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
         return new_data
 
     @Appender(dtl.DatetimeLikeArrayMixin._addsub_int_array.__doc__)
-    def _addsub_int_array(
-            self,
-            other,   # type: Union[Index, ExtensionArray, np.ndarray[int]]
-            op      # type: Callable[Any, Any]
-    ):
-        # type: (...) -> PeriodArray
+    def _addsub_int_array(self, other, op):
+        """
+        Parameters
+        ----------
+        other : Union[Index, ExtensionArray, np.ndarray[int]]
+        op : Callable[Any, Any]
+
+        Returns
+        -------
+        PeriodArray
+
+        """
 
         assert op in [operator.add, operator.sub]
         if op is operator.sub:

@@ -7,11 +7,7 @@ from pandas.core.dtypes.dtypes import registry
 from pandas import compat
 
 
-def array(data,         # type: Sequence[object]
-          dtype=None,   # type: Optional[Union[str, np.dtype, ExtensionDtype]]
-          copy=True,    # type: bool
-          ):
-    # type: (...) -> ExtensionArray
+def array(data, dtype=None, copy=True,):
     """
     Create an array.
 

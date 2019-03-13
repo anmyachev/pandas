@@ -58,17 +58,19 @@ class AttributesMixin(object):
 
     @property
     def _scalar_type(self):
-        # type: () -> Union[type, Tuple[type]]
         """The scalar associated with this datelike
 
         * PeriodArray : Period
         * DatetimeArray : Timestamp
         * TimedeltaArray : Timedelta
+
+        Returns
+        -------
+        Union[type, Tuple[type]]
         """
         raise AbstractMethodError(self)
 
     def _scalar_from_string(self, value):
-        # type: (str) -> Union[Period, Timestamp, Timedelta, NaTType]
         """
         Construct a scalar type from a string.
 
@@ -78,7 +80,7 @@ class AttributesMixin(object):
 
         Returns
         -------
-        Period, Timestamp, or Timedelta, or NaT
+        Union[Period, Timestamp, Timedelta, NaTType]
             Whatever the type of ``self._scalar_type`` is.
 
         Notes
@@ -89,13 +91,12 @@ class AttributesMixin(object):
         raise AbstractMethodError(self)
 
     def _unbox_scalar(self, value):
-        # type: (Union[Period, Timestamp, Timedelta, NaTType]) -> int
         """
         Unbox the integer value of a scalar `value`.
 
         Parameters
         ----------
-        value : Union[Period, Timestamp, Timedelta]
+        value : Union[Period, Timestamp, Timedelta, NaTType]
 
         Returns
         -------
@@ -109,7 +110,6 @@ class AttributesMixin(object):
         raise AbstractMethodError(self)
 
     def _check_compatible_with(self, other):
-        # type: (Union[Period, Timestamp, Timedelta, NaTType]) -> None
         """
         Verify that `self` and `other` are compatible.
 
@@ -121,7 +121,7 @@ class AttributesMixin(object):
 
         Parameters
         ----------
-        other
+        other : Union[Period, Timestamp, Timedelta, NaTType]
 
         Raises
         ------
@@ -350,7 +350,6 @@ class DatetimeLikeArrayMixin(ExtensionOpsMixin,
 
     @property
     def asi8(self):
-        # type: () -> ndarray
         """
         Integer representation of the values.
 
@@ -458,17 +457,25 @@ class DatetimeLikeArrayMixin(ExtensionOpsMixin,
 
         return self._simple_new(result, dtype=self.dtype, freq=freq)
 
-    def __setitem__(
-            self,
-            key,    # type: Union[int, Sequence[int], Sequence[bool], slice]
-            value,  # type: Union[NaTType, Scalar, Sequence[Scalar]]
-    ):
-        # type: (...) -> None
-        # I'm fudging the types a bit here. The "Scalar" above really depends
-        # on type(self). For PeriodArray, it's Period (or stuff coercible
-        # to a period in from_sequence). For DatetimeArray, it's Timestamp...
-        # I don't know if mypy can do that, possibly with Generics.
-        # https://mypy.readthedocs.io/en/latest/generics.html
+    def __setitem__(self, key, value,):
+        """
+        Parameters
+        ----------
+        key :   Union[int, Sequence[int], Sequence[bool], slice]
+        value : Union[NaTType, Scalar, Sequence[Scalar]]
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        I'm fudging the types a bit here. The "Scalar" above really depends
+        on type(self). For PeriodArray, it's Period (or stuff coercible
+        to a period in from_sequence). For DatetimeArray, it's Timestamp...
+        I don't know if mypy can do that, possibly with Generics.
+        https://mypy.readthedocs.io/en/latest/generics.html
+        """
 
         if is_list_like(value):
             is_slice = isinstance(key, slice)

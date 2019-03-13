@@ -93,7 +93,6 @@ values_from_object = lib.values_from_object
 
 
 def is_bool_indexer(key):
-    # type: (Any) -> bool
     """
     Check whether `key` is a valid boolean indexer.
 
