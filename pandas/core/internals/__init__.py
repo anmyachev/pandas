@@ -5,7 +5,7 @@
 from .blocks import (
     Block, BoolBlock, CategoricalBlock, ComplexBlock, DatetimeBlock,
     DatetimeTZBlock, ExtensionBlock, FloatBlock, IntBlock, ObjectBlock,
-    TimeDeltaBlock, _block2d_to_blocknd, _block_shape, _factor_indexer)
+    TimeDeltaBlock, _block_shape)
 from .blocks import make_block  # io.pytables, io.packers
 from .managers import (
     BlockManager, SingleBlockManager, create_block_manager_from_arrays,

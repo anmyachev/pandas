@@ -15,7 +15,6 @@ import numpy as np
 import six
 from six import binary_type, text_type
 
-import pandas._libs.concat
 # Avoid import from outside _libs
 if sys.version_info.major == 2:
     from StringIO import StringIO
@@ -35,9 +34,9 @@ from dateutil.parser import parse as du_parse
 from pandas._libs.tslibs.ccalendar import MONTH_NUMBERS
 from pandas._libs.tslibs.nattype import nat_strings, NaT
 
-from pandas._libs.datehelpers import does_string_look_like_datetime
+from pandas._libs.datehelpers import _does_string_look_like_datetime
 
-cdef extern from "../src/datetime/opt_date_parse.h":
+cdef extern from "src/datetime/opt_date_parse.h":
     int does_string_look_like_time(object parse_string)
     int parse_date_quarter(object parse_string, int* year, int* quarter)
     int parse_month_year_date(object parse_string, int* year, int* month)

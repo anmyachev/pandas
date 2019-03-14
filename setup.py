@@ -627,8 +627,8 @@ ext_data = {
         'sources': np_datetime_sources},
     '_libs.tslibs.parsing': {
         'pyxfile': '_libs/tslibs/parsing',
-        'depends': ['pandas/_libs/src/datetime/opt_date_parse.h'],
-        'sources': ['pandas/_libs/src/datetime/opt_date_parse.c'],
+        'depends': ['pandas/_libs/tslibs/src/datetime/opt_date_parse.h'],
+        'sources': ['pandas/_libs/tslibs/src/datetime/opt_date_parse.c'],
         'include': []},
     '_libs.tslibs.period': {
         'pyxfile': '_libs/tslibs/period',
@@ -754,7 +754,7 @@ extensions.append(_move_ext)
 
 _check_ext = Extension('pandas._libs.datehelpers',
                        depends=[],
-                       sources=['pandas/_libs/src/datetime/datehelpers.c'],
+                       sources=['pandas/_libs/tslibs/src/datetime/datehelpers.c'],
                        extra_compile_args=extra_compile_args,
                        extra_link_args=extra_link_args,
                        define_macros=macros)
