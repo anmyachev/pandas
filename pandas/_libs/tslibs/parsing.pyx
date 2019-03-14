@@ -235,7 +235,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
             result = parse_date_quarter(date_string, &year, &quarter)
             if result > 0:
                 if not (1 <= quarter <= 4):
-                    msg = ('Incorrect quarterly string is given,'
+                    msg = ('Incorrect quarterly string is given, '
                            'quarter must be between 1 and 4: {dstr}')
                     raise DateParseError(msg.format(dstr=date_string))
 

@@ -694,23 +694,7 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                             # parsing mixed naive and aware strings
                             out_tzoffset_vals.add('naive')
                         iresult[i] = value
-                        try:
-                            check_dts_bounds(&dts)
-                        except OutOfBoundsDatetime:
-                            # GH#19382 for just-barely-OutOfBounds falling back to
-                            # dateutil parser will return incorrect result because
-                            # it will ignore nanoseconds
-                            if is_coerce:
-                                iresult[i] = NPY_NAT
-                                _cache[val] = iresult[i]
-                                continue
-                            elif require_iso8601:
-                                if is_raise:
-                                    raise ValueError("time data {val} doesn't "
-                                                    "match format specified"
-                                                    .format(val=val))
-                                return values
-                            raise
+                        check_dts_bounds(&dts)
                         _cache[val] = iresult[i]
 
                 else:
