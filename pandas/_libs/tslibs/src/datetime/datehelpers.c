@@ -9,10 +9,10 @@
 #include "../../../src/inline_helper.h"
 
 #if PY_MAJOR_VERSION >= 3
-    #define PY_STRING_CHECK(string) PyUnicode_Check(string)
+    #define PY_STRING_CHECK(string) (PyUnicode_Check(string))
 #else
     #define PY_STRING_CHECK(string) \
-        PyString_Check(string) || PyUnicode_Check(string)
+        (PyString_Check(string) || PyUnicode_Check(string))
 #endif
 
 int PANDAS_INLINE convert_and_set_item(PyObject *item, Py_ssize_t index,
