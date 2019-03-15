@@ -51,7 +51,7 @@ int PANDAS_INLINE convert_and_set_item(PyObject *item, Py_ssize_t index,
     }
 
     if (do_convert) {
-        if (PY_STRING_CHECK(item)) {
+        if (!PY_STRING_CHECK(item)) {
             PyObject *str_item = PyObject_Str(item);
             if (str_item == NULL) {
                 return 0;
