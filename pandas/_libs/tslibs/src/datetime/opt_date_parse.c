@@ -3,7 +3,9 @@
 #include <datetime.h>
 #include <string.h>
 
-static int inline parse_4digit(const char* s) {
+#include "../../../src/inline_helper.h"
+
+int PANDAS_INLINE parse_4digit(const char* s) {
      const char *ch = s;
      int result = 0;
      if (*ch < '0' || *ch > '9') return -1;
@@ -20,7 +22,7 @@ static int inline parse_4digit(const char* s) {
      return result;
 }
 
-static int inline parse_2digit(const char* s) {
+int PANDAS_INLINE parse_2digit(const char* s) {
     const char *ch = s;
     int result = 0;
     if (*ch < '0' || *ch > '9') return -1;
@@ -31,7 +33,7 @@ static int inline parse_2digit(const char* s) {
     return result;
 }
 
-static int inline parse_1digit(const char* s) {
+int PANDAS_INLINE parse_1digit(const char* s) {
     if (*s < '0' || *s > '9') return -1;
     return (int)(*s - '0');
 }
@@ -55,19 +57,36 @@ int index_Q(const char* string_with_index, int start_position,
     return -4;
 }
 
+int PANDAS_INLINE py_string_as_data(PyObject* parse_string, char** buf, int* length) {
+#if PY_MAJOR_VERSION == 2
+    if (!PyString_CheckExact(parse_string)) {
+        if (!PyUnicode_CheckExact(parse_string)) {
+            return -1;
+        } else {
+            *buf = PyUnicode_AS_DATA(parse_string);
+            *length = (int)PyUnicode_GET_SIZE(parse_string);
+        }
+    } else {
+        *buf = PyString_AS_STRING(parse_string);
+        *length = (int)PyString_GET_SIZE(parse_string);
+    }
+#else
+    if (!PyUnicode_CheckExact(parse_string) ||
+            !PyUnicode_IS_READY(parse_string)) {
+        return -1;
+    }
+    *buf = PyUnicode_DATA(parse_string);
+    *length = (int)PyUnicode_GET_LENGTH(parse_string);
+#endif
+    return 0;
+}
+
 int parse_date_quarter(PyObject* parse_string, int* year, int* quarter) {
     const char* buf = NULL;
     int length, index;
     int _year, _quarter;
     int result;
-
-    if (!PyUnicode_CheckExact(parse_string) ||
-            !PyUnicode_IS_READY(parse_string)) {
-        return -1;
-    }
-    buf = PyUnicode_DATA(parse_string);
-    length = (int)PyUnicode_GET_LENGTH(parse_string);
-
+    if (py_string_as_data(parse_string, &buf, &length) != 0) return -1;
     index = index_Q(buf, 1, 6, length);
     if (index == 1) {
         _quarter = parse_1digit(buf);
@@ -109,21 +128,14 @@ int parse_date_quarter(PyObject* parse_string, int* year, int* quarter) {
     return result;
 }
 
-static char delimiters[4] = " /-\\";
+static char delimiters[] = " /-\\";
 
 int parse_month_year_date(PyObject* parse_string, int* year, int* month) {
     const char* buf = NULL;
     int length;
     int _year, _month;
     int result;
-
-    if (!PyUnicode_CheckExact(parse_string) ||
-            !PyUnicode_IS_READY(parse_string)) {
-        return -1;
-    }
-    buf = PyUnicode_DATA(parse_string);
-    length = (int)PyUnicode_GET_LENGTH(parse_string);
-
+    if (py_string_as_data(parse_string, &buf, &length) != 0) return -1;
     if (length == 7) {
         const int delim1 = buf[2];
         const int delim2 = buf[4];
@@ -148,7 +160,7 @@ int parse_month_year_date(PyObject* parse_string, int* year, int* month) {
 }
 
 int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
-                        PyObject* compare_with_freq, int* year, int* month) {
+                         PyObject* compare_with_freq, int* year, int* month) {
     const char* buf = NULL;
     int length;
     int has_freq = 0;
@@ -158,15 +170,9 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
     if (freq == Py_None) {
         return -1;
     }
-    if (!PyUnicode_CheckExact(parse_string) ||
-            !PyUnicode_IS_READY(parse_string)) {
-        return -1;
-    }
-    buf = PyUnicode_DATA(parse_string);
-    length = (int)PyUnicode_GET_LENGTH(parse_string);
-
+    if (py_string_as_data(parse_string, &buf, &length) != 0) return -1;
     if (length == 6) {
-        if (PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) {
+        if (PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) { //FIXME
             has_freq = 1;
         } else {
             PyObject* getattr_result = PyObject_GetAttrString(freq,
@@ -202,16 +208,7 @@ PyObject* parse_slashed_date(PyObject* parse_string, PyObject* dayfirst,
     Py_ssize_t length;
     int day, month, year;
     PyObject* result;
-#if PY_MAJOR_VERSION == 2
-#error Implement me
-#else
-    if (!PyUnicode_CheckExact(parse_string) ||
-            !PyUnicode_IS_READY(parse_string)) {
-        Py_RETURN_NONE;
-    }
-    buf = PyUnicode_DATA(parse_string);
-    length = PyUnicode_GET_LENGTH(parse_string);
-#endif
+    if (py_string_as_data(parse_string, &buf, &length) != 0) Py_RETURN_NONE;
     if (length != 10 || strchr(delimiters, buf[2]) == NULL ||
                             strchr(delimiters, buf[5]) == NULL) {
         Py_RETURN_NONE;
@@ -275,17 +272,7 @@ int does_string_look_like_time(PyObject* parse_string) {
     char* buf;
     Py_ssize_t length;
     int hour, minute;
-#if PY_MAJOR_VERSION == 2
-#error Implement me
-#else
-    if (!PyUnicode_CheckExact(parse_string) ||
-            !PyUnicode_IS_READY(parse_string)) {
-        // not a string, so doesn't look like time
-        return 0;
-    }
-    buf = PyUnicode_DATA(parse_string);
-    length = PyUnicode_GET_LENGTH(parse_string);
-#endif
+    if (py_string_as_data(parse_string, &buf, &length) != 0) return 0;
     if (length < 4) {
         // h:MM doesn't fit in, not a time
         return 0;
