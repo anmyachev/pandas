@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "../../../src/inline_helper.h"
+#include "../../../src/parser/tokenizer.h"
 
 #if PY_MAJOR_VERSION >= 3
     #define PY_STRING_CHECK(string) (PyUnicode_Check(string))
@@ -322,41 +323,15 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
     }
 }
 
-int PANDAS_INLINE parse_4digit(const char* s) {
-     const char *ch = s;
-     int result = 0;
-     if (*ch < '0' || *ch > '9') return -1;
-     result += (int)(*ch - '0') * 1000;
-     ch++;
-     if (*ch < '0' || *ch > '9') return -1;
-     result += (int)(*ch - '0') * 100;
-     ch++;
-     if (*ch < '0' || *ch > '9') return -1;
-     result += (int)(*ch - '0') * 10;
-     ch++;
-     if (*ch < '0' || *ch > '9') return -1;
-     result += (int)(*ch - '0');
-     return result;
-}
-
-int PANDAS_INLINE parse_2digit(const char* s) {
-    const char *ch = s;
-    int result = 0;
-    if (*ch < '0' || *ch > '9') return -1;
-    result += (int)(*ch - '0') * 10;
-    ch++;
-    if (*ch < '0' || *ch > '9') return -1;
-    result += (int)(*ch - '0');
-    return result;
-}
-
 static char not_datelike[sizeof(char) * 256];
 
 static PyObject* _does_string_look_like_datetime(PyObject* unused,
-                                                PyObject* arg) {
+                                                 PyObject* arg) {
     PyObject* str = NULL;
-    char* buf = NULL;
+    char *buf = NULL, *endptr = NULL;
     Py_ssize_t length = -1;
+    double converted_date;
+    int error = 0;
     int result = 1;
 
 #if PY_MAJOR_VERSION == 2
@@ -391,43 +366,10 @@ static PyObject* _does_string_look_like_datetime(PyObject* unused,
         } else if (length == 1 && not_datelike[Py_CHARMASK(first)]) {
             result = 0;
         } else {
-            char* dot_pos = strchr(buf, '.');
-            char *to_parse = buf, *end_point = NULL, *to_free = NULL;
-            double parsed;
-            if (dot_pos != NULL) {
-                struct lconv *locale_data = localeconv();
-                const char *decimal_point = locale_data->decimal_point;
-                if (decimal_point[0] != '.' || decimal_point[1] != 0) {
-                    // Python always uses "." as decimal separator,
-                    // replace with locale-dependent
-                    size_t decimal_len = strlen(decimal_point);
-                    size_t mem_size = length + strlen(decimal_point);
-                    to_free = to_parse = (char*)(malloc(mem_size));
-                    if (to_parse == NULL) {
-                        Py_XDECREF(str);
-                        return PyErr_NoMemory();
-                    }
-                    memcpy(to_parse, buf, dot_pos - buf);
-                    memcpy(&to_parse[dot_pos - buf], decimal_point,
-                           decimal_len);
-                    memcpy(&to_parse[dot_pos - buf + decimal_len], dot_pos + 1,
-                           length - (dot_pos - buf) - 1);
-                }
+            converted_date = xstrtod(buf, &endptr, '.', 'e', '\0', 1, &error);
+            if ((error == 0) && (endptr == buf + length)) {
+                result = (converted_date >= 1000) ? 1 : 0;
             }
-
-            errno = 0;
-            parsed = strtod(to_parse, &end_point);
-            if (end_point != to_parse && errno == 0) {
-                // need to check if there's anything left
-                for (; *end_point != 0 && Py_ISSPACE(*end_point); ++end_point)
-                    {}
-                if (*end_point == 0) {
-                    // double parsed okay, now check it
-                    result = (parsed >= 1000) ? 1 : 0;
-                }
-            }
-
-            free(to_free);
         }
     }
 
