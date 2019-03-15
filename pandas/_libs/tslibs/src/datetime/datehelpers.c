@@ -6,7 +6,16 @@
 #include <locale.h>
 #include <string.h>
 
-static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
+#include "../../../src/inline_helper.h"
+
+#if PY_MAJOR_VERSION >= 3
+    #define PY_STRING_CHECK(string) PyUnicode_Check(string)
+#else
+    #define PY_STRING_CHECK(string) \
+        PyString_Check(string) || PyUnicode_Check(string)
+#endif
+
+int PANDAS_INLINE convert_and_set_item(PyObject *item, Py_ssize_t index,
                                        PyArrayObject *result,
                                        int keep_trivial_numbers) {
     int needs_decref = 0, do_convert = 1;
@@ -14,19 +23,25 @@ static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
         return 0;
     }
     if (keep_trivial_numbers) {
-        // don't convert an integer if it's zero, don't convert a float if it's zero or NaN
+        // don't convert an integer if it's zero,
+        // don't convert a float if it's zero or NaN
+#if PY_MAJOR_VERSION >= 3
         if (PyLong_Check(item)) {
             PyLongObject* v = (PyLongObject*)item;
             switch (Py_SIZE(v)) {
             case 0:
                 do_convert = 0;
                 break;
-            case 1: // fallthrough
+            case 1:  // fallthrough
             case -1:
                 if (v->ob_digit[0] == 0) {
                     do_convert = 0;
                 }
             }
+#else
+        if (PyInt_CheckExact(item)) {
+            if (((PyIntObject*)item)->ob_ival == 0) do_convert = 0;
+#endif
         } else if (PyFloat_Check(item)) {
             double v = PyFloat_AS_DOUBLE(item);
             if (v == 0.0 || v != v) {
@@ -36,11 +51,7 @@ static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
     }
 
     if (do_convert) {
-#if PY_MAJOR_VERSION == 2
-#error Python 2 unsupported
-#else
-        if (!PyUnicode_Check(item)) {
-#endif
+        if (PY_STRING_CHECK(item)) {
             PyObject *str_item = PyObject_Str(item);
             if (str_item == NULL) {
                 return 0;
@@ -58,12 +69,9 @@ static inline int convert_and_set_item(PyObject *item, Py_ssize_t index,
     return 1;
 }
 
-static int put_object_as_unicode(PyObject* list, Py_ssize_t idx,
+static int put_object_as_string(PyObject* list, Py_ssize_t idx,
                                  PyObject* item) {
-#if PY_MAJOR_VERSION == 2
-#error Python 2 not implemented
-#else
-    if (!PyUnicode_Check(item)) {
+    if (PY_STRING_CHECK(item)) {
         PyObject* unicode_item = PyObject_Str(item);
         if (unicode_item == NULL) {
             return 0;
@@ -71,7 +79,6 @@ static int put_object_as_unicode(PyObject* list, Py_ssize_t idx,
         Py_DECREF(item);
         item = unicode_item;
     }
-#endif
     return (PyList_SetItem(list, idx, item) == 0) ? 1 : 0;
 }
 
@@ -117,18 +124,21 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
         if (array == NULL) {
             return NULL;
         }
-        npy_intp dims[1];
+
         array_size = PySequence_Size(array);
         if (array_size == -1) {
             Py_DECREF(array);
             return NULL;
         }
-        dims[0] = array_size;
 
-        result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
-        if (result == NULL) {
-            Py_DECREF(array);
-            return NULL;
+        {
+            npy_intp dims[1];
+            dims[0] = array_size;
+            result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
+            if (result == NULL) {
+                Py_DECREF(array);
+                return NULL;
+            }
         }
 
         if (PyArray_CheckExact(array)) {
@@ -137,7 +147,8 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
             for (i = 0; i < array_size; ++i) {
                 PyObject *item = PyArray_GETITEM(ndarray,
                                                  PyArray_GETPTR1(ndarray, i));
-                if (!convert_and_set_item(item, i, result, keep_trivial_numbers)) {
+                if (!convert_and_set_item(item, i, result,
+                                          keep_trivial_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
                     Py_DECREF(item);
@@ -158,7 +169,8 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
 
             for (i = 0; i < array_size; ++i) {
                 PyObject* item = PySequence_Fast_GET_ITEM(fast_array, i);
-                if (!convert_and_set_item(item, i, result, keep_trivial_numbers)) {
+                if (!convert_and_set_item(item, i, result,
+                                          keep_trivial_numbers)) {
                     Py_DECREF(result);
                     Py_DECREF(array);
                     Py_DECREF(fast_array);
@@ -233,11 +245,14 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
                 }
             }
         }
-        npy_intp dims[1];
-        dims[0] = min_array_size;
-        result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
-        if (result == NULL) {
-            return free_arrays(arrays, sequence_size);
+
+        {
+            npy_intp dims[1];
+            dims[0] = min_array_size;
+            result = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_OBJECT, 0);
+            if (result == NULL) {
+                return free_arrays(arrays, sequence_size);
+            }
         }
 
         separator = PyUnicode_FromFormat(" ");
@@ -259,7 +274,7 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
                         Py_DECREF(result);
                         return free_arrays(arrays, sequence_size);
                     }
-                    if (!put_object_as_unicode(list_to_join, j, item)) {
+                    if (!put_object_as_string(list_to_join, j, item)) {
                         Py_DECREF(item);
                         Py_DECREF(list_to_join);
                         Py_DECREF(result);
@@ -276,7 +291,7 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
                         return free_arrays(arrays, sequence_size);
                     }
                     Py_INCREF(item);
-                    if (!put_object_as_unicode(list_to_join, j, item)) {
+                    if (!put_object_as_string(list_to_join, j, item)) {
                         Py_DECREF(item);
                         Py_DECREF(list_to_join);
                         Py_DECREF(result);
@@ -307,7 +322,7 @@ static PyObject* concat_date_cols(PyObject *self, PyObject *args,
     }
 }
 
-static int inline parse_4digit(const char* s) {
+int PANDAS_INLINE parse_4digit(const char* s) {
      const char *ch = s;
      int result = 0;
      if (*ch < '0' || *ch > '9') return -1;
@@ -324,7 +339,7 @@ static int inline parse_4digit(const char* s) {
      return result;
 }
 
-static int inline parse_2digit(const char* s) {
+int PANDAS_INLINE parse_2digit(const char* s) {
     const char *ch = s;
     int result = 0;
     if (*ch < '0' || *ch > '9') return -1;
@@ -439,6 +454,7 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
     "datehelpers",                                   // name of module
@@ -447,9 +463,20 @@ static struct PyModuleDef moduledef = {
                     // or -1 if the module keeps state in global variables.
     module_methods
 };
+#define PY_DATEHELPERS_MODULE_INIT PyMODINIT_FUNC PyInit_datehelpers(void)
+#define PY_MODULE_CREATE PyModule_Create(&moduledef)
+#define PY_RETURN_MODULE return module
+#else
+#define PY_DATEHELPERS_MODULE_INIT void initdatehelpers(void)
+#define PY_MODULE_CREATE Py_InitModule("datehelpers", module_methods)
+#define PY_RETURN_MODULE
+#endif
 
-PyMODINIT_FUNC PyInit_datehelpers(void) {
+PY_DATEHELPERS_MODULE_INIT {
+    PyObject *module = NULL;
     import_array();
+
+    module = PY_MODULE_CREATE;
 
     memset(not_datelike, 0, sizeof(not_datelike));
     not_datelike['a'] = not_datelike['A'] = 1;
@@ -457,5 +484,5 @@ PyMODINIT_FUNC PyInit_datehelpers(void) {
     not_datelike['p'] = not_datelike['P'] = 1;
     not_datelike['t'] = not_datelike['T'] = 1;
 
-    return PyModule_Create(&moduledef);
+    PY_RETURN_MODULE;
 }
