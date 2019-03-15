@@ -754,7 +754,9 @@ extensions.append(_move_ext)
 
 _check_ext = Extension('pandas._libs.datehelpers',
                        depends=[],
-                       sources=['pandas/_libs/tslibs/src/datetime/datehelpers.c'],
+                       sources=[
+                           'pandas/_libs/tslibs/src/datetime/datehelpers.c'
+                        ],
                        extra_compile_args=extra_compile_args,
                        extra_link_args=extra_link_args,
                        define_macros=macros)

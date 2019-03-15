@@ -737,19 +737,24 @@ int skip_this_line(register parser_t *self, int64_t rownum) {
     }
 }
 
-int tokenize_bytes(register parser_t *self, size_t line_limit, int64_t start_lines) {
+int tokenize_bytes(register parser_t *self,
+                   size_t line_limit, int64_t start_lines) {
     int64_t i, slen;
     int should_skip;
     char c;
     char *stream;
     char *buf = self->data + self->datapos;
 
-    const char line_terminator = (self->lineterminator == '\0') ? '\n' : self->lineterminator;
+    const char line_terminator = (self->lineterminator == '\0') ?
+            '\n' : self->lineterminator;
 
-    // 1000 is something that couldn't fit in "char" thus comparing a char to it would always be "false"
+    // 1000 is something that couldn't fit in "char"
+    // thus comparing a char to it would always be "false"
     const int carriage_symbol = (self->lineterminator == '\0') ? '\r' : 1000;
-    const int comment_symbol = (self->commentchar != '\0') ? self->commentchar : 1000;
-    const int escape_symbol = (self->escapechar != '\0') ? self->escapechar : 1000;
+    const int comment_symbol = (self->commentchar != '\0') ?
+            self->commentchar : 1000;
+    const int escape_symbol = (self->escapechar != '\0') ?
+            self->escapechar : 1000;
 
     if (make_stream_space(self, self->datalen - self->datapos) < 0) {
         int64_t bufsize = 100;
@@ -1534,7 +1539,8 @@ int main(int argc, char *argv[]) {
 // * Add tsep argument for thousands separator
 //
 
-// pessimistic but quick assessment, assuming that each decimal digit requires 4 bits to store
+// pessimistic but quick assessment,
+// assuming that each decimal digit requires 4 bits to store
 const int max_int_decimal_digits = (sizeof(unsigned int) * 8) / 4;
 
 double xstrtod(const char *str, char **endptr, char decimal, char sci,

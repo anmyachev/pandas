@@ -610,8 +610,10 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                         # so we can execute a faster version
                         # that doesn't raise a ValueError exception if it
                         # was supplied with something that's not a date.
-                        string_to_dts_failed = _string_to_dts_noexc(val, &dts,
-                                &out_local, &out_tzoffset) != 0
+                        string_to_dts_failed = _string_to_dts_noexc(
+                            val, &dts, &out_local,
+                            &out_tzoffset
+                        ) != 0
                         if string_to_dts_failed:
                             # An error at this point is a _parsing_ error
                             # specifically _not_ OutOfBoundsDatetime
@@ -632,9 +634,11 @@ cpdef array_to_datetime(ndarray[object] values, str errors='raise',
                                 return values, tz_out
 
                             try:
-                                py_dt = parse_datetime_string(val,
-                                                              dayfirst=dayfirst,
-                                                              yearfirst=yearfirst)
+                                py_dt = parse_datetime_string(
+                                    val,
+                                    dayfirst=dayfirst,
+                                    yearfirst=yearfirst
+                                )
                             except Exception:
                                 if is_coerce:
                                     iresult[i] = NPY_NAT

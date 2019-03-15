@@ -1,5 +1,5 @@
-#ifndef PANDAS__LIBS_SRC_DATETIME_OPT_DATE_PARSE_H_
-#define PANDAS__LIBS_SRC_DATETIME_OPT_DATE_PARSE_H_
+#ifndef PANDAS__LIBS_TSLIBS_SRC_DATETIME_OPT_DATE_PARSE_H_
+#define PANDAS__LIBS_TSLIBS_SRC_DATETIME_OPT_DATE_PARSE_H_
 
 #include <Python.h>
 
@@ -16,4 +16,4 @@ int does_string_look_like_time(PyObject* parse_string);
 PyObject* make_date_from_year_month(int year, int month, PyObject* default_date,
                                     PyObject* default_tzinfo);
 
-#endif  // PANDAS__LIBS_SRC_DATETIME_OPT_DATE_PARSE_H_
+#endif  // PANDAS__LIBS_TSLIBS_SRC_DATETIME_OPT_DATE_PARSE_H_
