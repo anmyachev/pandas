@@ -84,6 +84,17 @@ int parse_iso_8601_datetime_noexc(char *str, int len,
     return __parse_iso_8601_datetime(str, len, 0, out, out_local, out_tzoffset);
 }
 
+#if PY_MAJOR_VERSION >= 3
+    #define PY_UNICODE_EXACT_CHECKS(_string) \
+        PyUnicode_CheckExact(_string) && PyUnicode_IS_ASCII(_string)
+    #define PY_UNICODE_GET_LENGTH(_string) PyUnicode_GET_LENGTH(_string)
+    #define PY_UNICODE_GET_DATA(_string) PyUnicode_DATA(_string)
+#else
+    #define PY_UNICODE_EXACT_CHECKS(_string) \
+        PyUnicode_CheckExact(_string)
+    #define PY_UNICODE_GET_LENGTH(_string) PyUnicode_GET_SIZE(_string)
+    #define PY_UNICODE_GET_DATA(_string) PyUnicode_AS_DATA(_string)
+#endif
 
 // Slightly faster version that doesn't raise a ValueError
 // if a date cannot be parsed, it reports various errors via return result.
@@ -94,11 +105,15 @@ int _string_to_dts_noexc(PyObject* val, npy_datetimestruct* dts,
     char *tmp;
     PyObject* ascii_string = NULL;
 
-#if PY_MAJOR_VERSION == 2
-#error Implement me
-#else
+#if PY_MAJOR_VERSION >= 3
     if (PyUnicode_Check(val)) {
-        if (!PyUnicode_CheckExact(val) || !PyUnicode_IS_ASCII(val)) {
+#else
+    if (PyString_Check(val)) {
+        length = (int)PyString_GET_SIZE(val);
+        tmp = PyString_AS_STRING(val);
+    } else if (PyUnicode_Check(val)) {
+#endif
+        if (!PY_UNICODE_EXACT_CHECKS(val)) {
             ascii_string = PyUnicode_AsASCIIString(val);
             if (ascii_string == NULL) {
                 PyErr_Clear();
@@ -106,13 +121,11 @@ int _string_to_dts_noexc(PyObject* val, npy_datetimestruct* dts,
             }
             val = ascii_string;
         }
-#endif
+        length = (int)PY_UNICODE_GET_LENGTH(val);
+        tmp = PY_UNICODE_GET_DATA(val);
     } else {
         return -1;
     }
-
-    length = (int)PyUnicode_GET_LENGTH(val);
-    tmp = PyUnicode_DATA(val);
 
     result = parse_iso_8601_datetime_noexc(tmp, length,
                                            dts, out_local, out_tzoffset);
@@ -310,7 +323,8 @@ static int __parse_iso_8601_datetime(char *str, int len, int want_exc,
         if (out->hour >= 24) {
             if (want_exc) {
                 PyErr_Format(PyExc_ValueError,
-                            "Hours out of range in datetime string \"%s\"", str);
+                             "Hours out of range in datetime string \"%s\"",
+                             str);
             }
             goto error;
         }
@@ -352,7 +366,8 @@ static int __parse_iso_8601_datetime(char *str, int len, int want_exc,
         if (out->min >= 60) {
             if (want_exc) {
                 PyErr_Format(PyExc_ValueError,
-                            "Minutes out of range in datetime string \"%s\"", str);
+                             "Minutes out of range in datetime string \"%s\"",
+                             str);
             }
             goto error;
         }
