@@ -71,7 +71,7 @@ int PANDAS_INLINE convert_and_set_item(PyObject *item, Py_ssize_t index,
 
 static int put_object_as_string(PyObject* list, Py_ssize_t idx,
                                  PyObject* item) {
-    if (PY_STRING_CHECK(item)) {
+    if (!PY_STRING_CHECK(item)) {
         PyObject* unicode_item = PyObject_Str(item);
         if (unicode_item == NULL) {
             return 0;
