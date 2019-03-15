@@ -57,7 +57,8 @@ int index_Q(const char* string_with_index, int start_position,
     return -4;
 }
 
-int PANDAS_INLINE py_string_as_data(PyObject* parse_string, char** buf, int* length) {
+int PANDAS_INLINE py_string_as_data(PyObject* parse_string,
+                                    char** buf, int* length) {
 #if PY_MAJOR_VERSION == 2
     if (!PyString_CheckExact(parse_string)) {
         if (!PyUnicode_CheckExact(parse_string)) {
@@ -172,28 +173,37 @@ int parse_date_with_freq(PyObject* parse_string, PyObject* freq,
     }
     if (py_string_as_data(parse_string, &buf, &length) != 0) return -1;
     if (length == 6) {
-        if (PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ) == 1) { //FIXME
-            has_freq = 1;
-        } else {
-            PyObject* getattr_result = PyObject_GetAttrString(freq,
-                                                              "rule_code");
-            if (getattr_result == NULL) {
+        PyObject* getattr_result = NULL;
+        switch (PyObject_RichCompareBool(freq, compare_with_freq, Py_EQ)) {
+            case 1:
+                has_freq = 1;
+                break;
+            case 0:
+                getattr_result = PyObject_GetAttrString(freq, "rule_code");
+                if (getattr_result == NULL) {
+                    PyErr_Clear();
+                    return -1;
+                }
+                has_freq = PyObject_RichCompareBool(getattr_result,
+                                                    compare_with_freq, Py_EQ);
+                Py_DECREF(getattr_result);
+                break;
+            case -1:
                 PyErr_Clear();
                 return -1;
-            }
-            has_freq = PyObject_RichCompareBool(getattr_result,
-                                                compare_with_freq, Py_EQ) == 1;
-            Py_DECREF(getattr_result);
         }
-        if (has_freq) {
-            _year = parse_4digit(buf);
-            _month = parse_2digit(buf + 4);
-            result = ((_year != -1) && (_month != -1)) ? 0 : -1;
-            if (result != -1) {
-                *year = _year;
-                *month = _month;
-            }
-            return result;
+        switch (has_freq) {
+            case 1:
+                _year = parse_4digit(buf);
+                _month = parse_2digit(buf + 4);
+                result = ((_year != -1) && (_month != -1)) ? 0 : -1;
+                if (result != -1) {
+                    *year = _year;
+                    *month = _month;
+                }
+                return result;
+            case -1:
+                PyErr_Clear();
         }
     }
     return -1;
