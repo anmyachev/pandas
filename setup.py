@@ -754,13 +754,13 @@ extensions.append(_move_ext)
 
 _check_ext = Extension('pandas._libs.datehelpers',
                        depends=[
-                            'pandas/_libs/src/parser/tokenizer.h'
+                           'pandas/_libs/src/parser/tokenizer.h'
                        ],
                        sources=[
                            'pandas/_libs/tslibs/src/datetime/datehelpers.c',
                            'pandas/_libs/src/parser/tokenizer.c'
-                        ],
-                       include_dirs = ['pandas/_libs/src/klib/'],
+                       ],
+                       include_dirs=['pandas/_libs/src/klib/'],
                        extra_compile_args=extra_compile_args,
                        extra_link_args=extra_link_args,
                        define_macros=macros)
