@@ -327,7 +327,6 @@ static char not_datelike[sizeof(char) * 256];
 
 static PyObject* _does_string_look_like_datetime(PyObject* unused,
                                                  PyObject* arg) {
-    PyObject* str = NULL;
     char *buf = NULL, *endptr = NULL;
     Py_ssize_t length = -1;
     double converted_date;
@@ -339,15 +338,16 @@ static PyObject* _does_string_look_like_datetime(PyObject* unused,
         if (!PyUnicode_CheckExact(arg)) {
             // arg is not a string, so it's certainly
             // not a datetime-looking string
-            Py_RETURN_FALSE;
+            PyErr_SetString(PyExc_ValueError,
+                            "_does_string_look_like_datetime expects a string");
+            return NULL;
         }
-        str = PyObject_Str(arg);
-        if (str == NULL) return NULL;
-        arg = str;
-    }
-    if (PyString_AsStringAndSize(arg, &buf, &length) == -1) {
-        Py_XDECREF(str);
-        return NULL;
+        buf = PyUnicode_AS_DATA(arg);
+        length = (int)PyUnicode_GET_SIZE(arg);
+    } else {
+        if (PyString_AsStringAndSize(arg, &buf, &length) == -1) {
+            return NULL;
+        }
     }
 #else
     if (!PyUnicode_CheckExact(arg) || !PyUnicode_IS_READY(arg)) {
@@ -373,7 +373,6 @@ static PyObject* _does_string_look_like_datetime(PyObject* unused,
         }
     }
 
-    Py_XDECREF(str);
     if (result) {
         Py_RETURN_TRUE;
     } else {
