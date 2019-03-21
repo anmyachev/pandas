@@ -937,7 +937,7 @@ class IntervalDtype(PandasExtensionDtype, ExtensionDtype):
             raise TypeError(msg.format(typ=type(string)))
 
         if (string.lower() == 'interval' or
-           cls._match.search(string) is not None):
+            cls._match.search(string) is not None):
                 return cls(string)
 
         msg = ('Incorrectly formatted string passed to constructor. '

@@ -9,10 +9,9 @@ import warnings
 import cython
 from cython import Py_ssize_t
 
-from cpython cimport (Py_INCREF, PyTuple_SET_ITEM,
-                      PyTuple_New,
-                      Py_EQ,
-                      PyObject_RichCompareBool)
+from cpython cimport (Py_INCREF, PyTuple_SET_ITEM, PyTuple_New, PyObject_Str,
+                      Py_EQ, Py_SIZE, PyObject_RichCompareBool,
+                      PyUnicode_Join, PyList_New)
 
 from cpython.datetime cimport (PyDateTime_Check, PyDate_Check,
                                PyTime_Check, PyDelta_Check,
@@ -24,10 +23,8 @@ cimport numpy as cnp
 from numpy cimport (ndarray, PyArray_GETITEM,
                     PyArray_ITER_DATA, PyArray_ITER_NEXT, PyArray_IterNew,
                     flatiter, NPY_OBJECT,
-                    int64_t,
-                    float32_t, float64_t,
-                    uint8_t, uint64_t,
-                    complex128_t)
+                    int64_t, float32_t, float64_t,
+                    uint8_t, uint64_t, complex128_t)
 cnp.import_array()
 
 cdef extern from "numpy/arrayobject.h":
@@ -40,11 +37,12 @@ cdef extern from "numpy/arrayobject.h":
         # Use PyDataType_* macros when possible, however there are no macros
         # for accessing some of the fields, so some are defined. Please
         # ask on cython-dev if you need more.
-        cdef int type_num
-        cdef int itemsize "elsize"
-        cdef char byteorder
-        cdef object fields
-        cdef tuple names
+        cdef:
+            int type_num
+            int itemsize "elsize"
+            char byteorder
+            object fields
+            tuple names
 
 
 cdef extern from "src/parse_helper.h":
@@ -2347,3 +2345,199 @@ def fast_multiget(dict mapping, ndarray keys, default=np.nan):
             output[i] = default
 
     return maybe_convert_objects(output)
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+cdef inline object convert_to_unicode(object item,
+                                      bint keep_trivial_numbers):
+    """
+    Convert `item` to str.
+
+    Parameters
+    ----------
+    item : object
+    keep_trivial_numbers : bool
+        if True, then conversion (to string from integer/float zero)
+        is not performed
+
+    Returns
+    -------
+    str
+    """
+    cdef:
+        bint do_convert = 1
+        float64_t float_item
+
+    if keep_trivial_numbers:
+        if isinstance(item, int):
+            if <int>item == 0:
+                do_convert = 0
+        elif isinstance(item, float):
+            float_item = item
+            if float_item == 0.0 or float_item != float_item:
+                do_convert = 0
+
+    if do_convert and not isinstance(item, str):
+        item = PyObject_Str(item)
+
+    return item
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+cdef cnp.ndarray[object] _concat_date_cols_numpy(tuple date_cols,
+                                                 Py_ssize_t rows_count,
+                                                 Py_ssize_t col_count,
+                                                 bint keep_trivial_numbers):
+    """
+    Concatenates `rows_count` elements from each `col_count` numpy arrays
+    in `date_cols` into strings.
+
+    Note
+    ----
+    This function speeds up concatenation for numpy arrays.
+    You also can use `_concat_date_cols_sequence` function.
+
+    Parameters
+    ----------
+    date_cols : tuple of numpy arrays
+    rows_count : Py_ssize_t
+    col_count : Py_ssize_t
+    keep_trivial_numbers : bool, default False
+        if True and len(date_cols) == 1, then
+        conversion (to string from integer/float zero) is not performed
+
+    Returns
+    -------
+    arr_of_rows : ndarray (dtype=object)
+    """
+    cdef:
+        Py_ssize_t col_idx, row_idx
+        list list_to_join
+        cnp.ndarray[object] iters
+        object[::1] iters_view
+        flatiter it
+        cnp.ndarray[object] result
+        object[:] result_view
+
+    result = np.zeros(rows_count, dtype=object)
+    # create memoryview of result ndarray - more effecient indexing
+    result_view = result
+
+    if col_count == 1:
+        array = date_cols[0]
+        it = <flatiter>PyArray_IterNew(array)
+        for row_idx in range(rows_count):
+            item = PyArray_GETITEM(array, PyArray_ITER_DATA(it))
+            result_view[row_idx] = convert_to_unicode(item,
+                                                      keep_trivial_numbers)
+            PyArray_ITER_NEXT(it)
+    else:
+        # create fixed size list - more effecient memory allocation
+        list_to_join = [None] * col_count
+        iters = np.zeros(col_count, dtype=object)
+        # create memoryview of iters ndarray, that will contain some
+        # flatiter's for each array in `date_cols` - more effecient indexing
+        iters_view = iters
+        for col_idx, array in enumerate(date_cols):
+            iters_view[col_idx] = PyArray_IterNew(array)
+        # array elements that are on the same line are converted to one string
+        for row_idx in range(rows_count):
+            for col_idx, array in enumerate(date_cols):
+                # this cast is needed, because we did not find a way
+                # to efficiently store `flatiter` type objects in ndarray
+                it = <flatiter>iters_view[col_idx]
+                item = PyArray_GETITEM(array, PyArray_ITER_DATA(it))
+                list_to_join[col_idx] = convert_to_unicode(item, False)
+                PyArray_ITER_NEXT(it)
+            result_view[row_idx] = PyUnicode_Join(' ', list_to_join)
+
+    return result
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+cdef cnp.ndarray[object] _concat_date_cols_sequence(tuple date_cols,
+                                                    Py_ssize_t rows_count,
+                                                    Py_ssize_t col_count,
+                                                    bint keep_trivial_numbers):
+    """
+    Concatenates `rows_count` elements from each `col_count` sequences
+    in `date_cols` into strings.
+
+    Parameters
+    ----------
+    date_cols : tuple of sequences
+    rows_count : Py_ssize_t
+    col_count : Py_ssize_t
+    keep_trivial_numbers : bool, default False
+        if True and len(date_cols) == 1, then
+        conversion (to string from integer/float zero) is not performed
+
+    Returns
+    -------
+    arr_of_rows : ndarray (dtype=object)
+    """
+    cdef:
+        Py_ssize_t col_idx, row_idx
+        list list_to_join
+        cnp.ndarray[object] result
+        object[:] result_view
+
+    result = np.zeros(rows_count, dtype=object)
+    result_view = result
+
+    if col_count == 1:
+        for row_idx, item in enumerate(date_cols[0]):
+            result_view[row_idx] = convert_to_unicode(item,
+                                                      keep_trivial_numbers)
+    else:
+        list_to_join = [None] * col_count
+        for row_idx in range(rows_count):
+            for col_idx, array in enumerate(date_cols):
+                list_to_join[col_idx] = convert_to_unicode(array[row_idx],
+                                                           False)
+            result_view[row_idx] = PyUnicode_Join(' ', list_to_join)
+
+    return result
+
+
+def _concat_date_cols(tuple date_cols, bint keep_trivial_numbers=True):
+    """
+    Concatenates elements from sequences in `date_cols` into strings.
+
+    Parameters
+    ----------
+    date_cols : tuple of sequences
+    keep_trivial_numbers : bool, default True
+        if True and len(date_cols) == 1, then
+        conversion (to string from integer/float zero) is not performed
+
+    Returns
+    -------
+    arr_of_rows : ndarray (dtype=object)
+
+    Examples
+    --------
+    >>> dates=np.array(['3/31/2019', '4/31/2019'], dtype=object)
+    >>> times=np.array(['11:20', '10:45'], dtype=object)
+    >>> result = _concat_date_cols((dates, times))
+    >>> result
+    array(['3/31/2019 11:20', '4/31/2019 10:45'], dtype=object)
+    """
+    cdef:
+        Py_ssize_t rows_count = 0, col_count = len(date_cols)
+
+    if col_count == 0:
+        return np.zeros(0, dtype=object)
+
+    rows_count = min(len(array) for array in date_cols)
+
+    if all(util.is_array(array) for array in date_cols):
+        # call specialized function to increase performance
+        return _concat_date_cols_numpy(date_cols, rows_count, col_count,
+                                       keep_trivial_numbers)
+    else:
+        return _concat_date_cols_sequence(date_cols, rows_count, col_count,
+                                          keep_trivial_numbers)
