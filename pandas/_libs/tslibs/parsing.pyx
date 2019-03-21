@@ -32,6 +32,12 @@ from dateutil.parser import parse as du_parse
 
 from pandas._libs.tslibs.ccalendar import MONTH_NUMBERS
 from pandas._libs.tslibs.nattype import nat_strings, NaT
+from pandas._libs.tslibs.util cimport get_c_string_buf_and_size
+
+cdef extern from "../src/parser/tokenizer.h":
+    double xstrtod(const char *p, char **q, char decimal, char sci, char tsep,
+                   int skip_trailing, int *error, int *maybe_int)
+
 
 # ----------------------------------------------------------------------
 # Constants
@@ -187,19 +193,35 @@ cdef parse_datetime_string_with_reso(date_string, freq=None, dayfirst=False,
 
 
 cpdef bint _does_string_look_like_datetime(object date_string):
-    if date_string.startswith('0'):
-        # Strings starting with 0 are more consistent with a
-        # date-like string than a number
-        return True
+    cdef:
+        const char *buf
+        char *endptr = NULL
+        Py_ssize_t length = -1
+        double converted_date
+        char first
+        int error = 0
 
-    try:
-        if float(date_string) < 1000:
+    buf = get_c_string_buf_and_size(date_string, &length)
+    if length >= 1:
+        first = buf[0]
+        if first == b'0':
+            # Strings starting with 0 are more consistent with a
+            # date-like string than a number
+            return True
+        elif date_string in _not_datelike_strings:
             return False
-    except ValueError:
-        pass
-
-    if date_string in _not_datelike_strings:
-        return False
+        else:
+            # xstrtod with such paramaters copies behavior of python `float`
+            # cast; for example, " 35.e-1 " is valid string for this cast so,
+            # for correctly xstrtod call necessary to pass these params:
+            # b'.' - a dot is used as separator, b'e' - an exponential form of
+            # a float number can be used, b'\0' - not to use a thousand
+            # separator, 1 - skip extra spaces before and after,
+            converted_date = xstrtod(buf, &endptr,
+                                     b'.', b'e', b'\0', 1, &error, NULL)
+            # if there were no errors and the whole line was parsed, then ...
+            if error == 0 and endptr == buf + length:
+                return converted_date >= 1000
 
     return True
 

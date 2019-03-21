@@ -15,6 +15,7 @@ import warnings
 import numpy as np
 
 import pandas._libs.lib as lib
+from pandas._libs.lib import _concat_date_cols
 import pandas._libs.ops as libops
 import pandas._libs.parsers as parsers
 from pandas._libs.tslibs import parsing
@@ -3473,22 +3474,6 @@ def _get_col_names(colspec, columns):
         elif isinstance(c, int):
             colnames.append(columns[c])
     return colnames
-
-
-def _concat_date_cols(date_cols):
-    if len(date_cols) == 1:
-        if compat.PY3:
-            return np.array([compat.text_type(x) for x in date_cols[0]],
-                            dtype=object)
-        else:
-            return np.array([
-                str(x) if not isinstance(x, compat.string_types) else x
-                for x in date_cols[0]
-            ], dtype=object)
-
-    rs = np.array([' '.join(compat.text_type(y) for y in x)
-                   for x in zip(*date_cols)], dtype=object)
-    return rs
 
 
 class FixedWidthReader(BaseIterator):
