@@ -30,7 +30,8 @@ cdef extern from "Python.h":
 
 import numpy as np
 cimport numpy as cnp
-from numpy cimport ndarray, uint8_t, uint64_t, int64_t, float64_t, PyArray_Concatenate
+from numpy cimport (ndarray, uint8_t, uint64_t,
+                    int64_t, float64_t, PyArray_Concatenate)
 cnp.import_array()
 
 from pandas._libs.util cimport UINT64_MAX, INT64_MAX, INT64_MIN
@@ -2202,7 +2203,7 @@ def _concatenate_chunks(list chunks):
         warning_message = " ".join([
             "Columns (%s) have mixed types." % warning_names,
             "Specify dtype option on import or set low_memory=False."
-          ])
+        ])
         warnings.warn(warning_message, DtypeWarning, stacklevel=8)
     return result
 
