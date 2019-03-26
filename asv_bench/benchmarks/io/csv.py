@@ -237,10 +237,10 @@ class ReadCSVParseSpecialDate(StringIORewind):
     params = (['mY', 'mdY', 'mQY', 'hm'],)
     params_name = ['value']
     objects = {
-        'mY':  '01-2019\n1-2019',
-        'mdY': '12/02/2010',
-        'mQY': '1Q09\n1Q2000\n09Q1\n2000Q1',
-        'hm':  '21:34'
+        'mY':  '01-2019\n1-2019\n',
+        'mdY': '12/02/2010\n',
+        'mQY': '1Q09\n1Q2000\n09Q1\n2000Q1\n',
+        'hm':  '21:34\n'
     }
 
     def setup(self, value):
