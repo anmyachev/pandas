@@ -6,8 +6,11 @@ import sys
 import re
 import time
 
-from cpython.datetime cimport datetime
+from libc.string cimport strchr
 
+from cpython.datetime cimport datetime, datetime_new, import_datetime
+from cpython.version cimport PY_VERSION_HEX
+import_datetime()
 
 import numpy as np
 
@@ -32,6 +35,29 @@ from dateutil.parser import parse as du_parse
 
 from pandas._libs.tslibs.ccalendar import MONTH_NUMBERS
 from pandas._libs.tslibs.nattype import nat_strings, NaT
+from pandas._libs.tslibs.util cimport get_c_string_buf_and_size
+
+cdef extern from "../src/headers/portable.h":
+    int getdigit_ascii(char c, int default) nogil
+
+cdef extern from "../src/parser/tokenizer.h":
+    double xstrtod(const char *p, char **q, char decimal, char sci, char tsep,
+                   int skip_trailing, int *error, int *maybe_int)
+
+
+_get_option = None
+
+
+def get_option(param):
+    """ Defer import of get_option to break an import cycle that caused
+    significant performance degradation in Period construction. See
+    GH#24118 for details
+    """
+    global _get_option
+    if _get_option is None:
+        from pandas.core.config import get_option
+        _get_option = get_option
+    return _get_option(param)
 
 # ----------------------------------------------------------------------
 # Constants
@@ -49,20 +75,99 @@ cdef object _TIMEPAT = re.compile(r'^([01]?[0-9]|2[0-3]):([0-5][0-9])')
 cdef set _not_datelike_strings = {'a', 'A', 'm', 'M', 'p', 'P', 't', 'T'}
 
 # ----------------------------------------------------------------------
+cdef:
+    const char* delimiters = " /-."
+    int MAX_DAYS_IN_MONTH = 31, MAX_MONTH = 12
 
-_get_option = None
+
+cdef bint _is_not_delimiter(const char ch):
+    return strchr(delimiters, ch) == NULL
 
 
-def get_option(param):
-    """ Defer import of get_option to break an import cycle that caused
-    significant performance degradation in Period construction. See
-    GH#24118 for details
+cdef inline int _parse_2digit(const char* s):
+    cdef int result = 0
+    result += getdigit_ascii(s[0], -10) * 10
+    result += getdigit_ascii(s[1], -100) * 1
+    return result
+
+
+cdef inline int _parse_4digit(const char* s):
+    cdef int result = 0
+    result += getdigit_ascii(s[0], -10) * 1000
+    result += getdigit_ascii(s[1], -100) * 100
+    result += getdigit_ascii(s[2], -1000) * 10
+    result += getdigit_ascii(s[3], -10000) * 1
+    return result
+
+
+cdef inline object _parse_delimited_date(object date_string, bint dayfirst):
     """
-    global _get_option
-    if _get_option is None:
-        from pandas.core.config import get_option
-        _get_option = get_option
-    return _get_option(param)
+    Parse special cases of dates: MM/DD/YYYY, DD/MM/YYYY, MM/YYYY.
+    At the beginning function tries to parse date in MM/DD/YYYY format, but
+    if month > 12 - in DD/MM/YYYY (`dayfirst == False`).
+    With `dayfirst == True` function makes an attempt to parse date in
+    DD/MM/YYYY, if an attemp is wrong - in DD/MM/YYYY
+
+    Note
+    ----
+    For MM/DD/YYYY, DD/MM/YYYY: delimiter can be a space or one of /-.
+    For MM/YYYY: delimiter can be a space or one of /-
+    If `date_string` can't be converted to date, then function returns
+    None, None
+
+    Parameters
+    ----------
+    date_string : str
+    dayfirst : bint
+
+    Returns:
+    --------
+    datetime, resolution
+    """
+    cdef:
+        const char* buf
+        Py_ssize_t length
+        int day = 1, month = 1, year
+        bint can_swap = 0
+
+    buf = get_c_string_buf_and_size(date_string, &length)
+    if length == 10:
+        # parsing MM?DD?YYYY and DD?MM?YYYY dates
+        if _is_not_delimiter(buf[2]) or _is_not_delimiter(buf[5]):
+            return None, None
+        month = _parse_2digit(buf)
+        day = _parse_2digit(buf + 3)
+        year = _parse_4digit(buf + 6)
+        reso = 'day'
+        can_swap = 1
+    elif length == 7:
+        # parsing MM?YYYY dates
+        if buf[2] == b'.' or _is_not_delimiter(buf[2]):
+            # we cannot reliably tell whether e.g. 10.2010 is a float
+            # or a date, thus we refuse to parse it here
+            return None, None
+        month = _parse_2digit(buf)
+        year = _parse_4digit(buf + 3)
+        reso = 'month'
+    else:
+        return None, None
+
+    if month < 0 or day < 0 or year < 1000:
+        # some part is not an integer, so
+        # date_string can't be converted to date, above format
+        return None, None
+
+    if 1 <= month <= MAX_DAYS_IN_MONTH and 1 <= day <= MAX_DAYS_IN_MONTH \
+            and (month <= MAX_MONTH or day <= MAX_MONTH):
+        if (month > MAX_MONTH or (day <= MAX_MONTH and dayfirst)) and can_swap:
+            day, month = month, day
+        if PY_VERSION_HEX >= 0x03060100:
+            # In Python <= 3.6.0 there is no range checking for invalid dates
+            # in C api, thus we call faster C version for 3.6.1 or newer
+            return datetime_new(year, month, day, 0, 0, 0, 0, None), reso
+        return datetime(year, month, day, 0, 0, 0, 0, None), reso
+
+    raise DateParseError("Invalid date specified ({}/{})".format(month, day))
 
 
 def parse_datetime_string(date_string, freq=None, dayfirst=False,
@@ -85,6 +190,10 @@ def parse_datetime_string(date_string, freq=None, dayfirst=False,
         # use current datetime as default, not pass _DEFAULT_DATETIME
         dt = du_parse(date_string, dayfirst=dayfirst,
                       yearfirst=yearfirst, **kwargs)
+        return dt
+
+    dt, _ = _parse_delimited_date(date_string, dayfirst)
+    if dt is not None:
         return dt
 
     try:
@@ -166,6 +275,10 @@ cdef parse_datetime_string_with_reso(date_string, freq=None, dayfirst=False,
 
     if not _does_string_look_like_datetime(date_string):
         raise ValueError('Given date string not likely a datetime.')
+
+    parsed, reso = _parse_delimited_date(date_string, dayfirst)
+    if parsed is not None:
+        return parsed, parsed, reso
 
     try:
         return _parse_dateabbr_string(date_string, _DEFAULT_DATETIME, freq)
@@ -300,7 +413,7 @@ cdef inline object _parse_dateabbr_string(object date_string, object default,
         except ValueError:
             pass
 
-    for pat in ['%Y-%m', '%m-%Y', '%b %Y', '%b-%Y']:
+    for pat in ['%Y-%m', '%b %Y', '%b-%Y']:
         try:
             ret = datetime.strptime(date_string, pat)
             return ret, ret, 'month'

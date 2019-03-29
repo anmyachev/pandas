@@ -617,7 +617,8 @@ ext_data = {
         'sources': np_datetime_sources},
     '_libs.tslibs.parsing': {
         'pyxfile': '_libs/tslibs/parsing',
-        'include': []},
+        'depends': ['pandas/_libs/src/parser/tokenizer.h'],
+        'sources': ['pandas/_libs/src/parser/tokenizer.c']},
     '_libs.tslibs.period': {
         'pyxfile': '_libs/tslibs/period',
         'include': ts_include,
@@ -739,6 +740,9 @@ _move_ext = Extension('pandas.util._move',
                       extra_compile_args=extra_compile_args,
                       extra_link_args=extra_link_args)
 extensions.append(_move_ext)
+
+# ----------------------------------------------------------------------
+
 
 # The build cache system does string matching below this point.
 # if you change something, be careful.
