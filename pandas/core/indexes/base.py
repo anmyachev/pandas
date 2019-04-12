@@ -2736,8 +2736,6 @@ class Index(IndexOpsMixin, PandasObject):
             return this.get_indexer(target, method=method, limit=limit,
                                     tolerance=tolerance)
 
-        print(target)
-        import pdb; pdb.set_trace()
         if not self.is_unique:
             raise InvalidIndexError('Reindexing only valid with uniquely'
                                     ' valued Index objects')

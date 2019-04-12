@@ -257,9 +257,10 @@ cdef class IndexEngine:
 
             # workaround for GH 22305
             # let's say that every nan is unique, because nan != nan;
-            # hash map include only one nan
+            # hash map can include only one nan
             # thus it is necessary to consider the rest nans
-            if len(self.mapping) + self.mapping.count_nan - 1 == len(values):
+            if len(self.mapping) +\
+                    self.mapping.count_nan_out_hash_table == len(values):
                 self.unique = 1
 
         self.need_unique_check = 0
