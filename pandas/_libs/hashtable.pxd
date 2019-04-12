@@ -6,7 +6,7 @@ from numpy cimport ndarray
 # prototypes for sharing
 
 cdef class HashTable:
-    pass
+    cdef int64_t count_nan
 
 cdef class UInt64HashTable(HashTable):
     cdef kh_uint64_t *table

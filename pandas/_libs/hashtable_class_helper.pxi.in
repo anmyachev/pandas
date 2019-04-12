@@ -10,6 +10,7 @@ WARNING: DO NOT edit .pxi FILE directly, .pxi is generated from .pxi.in
 # ----------------------------------------------------------------------
 
 from pandas._libs.tslibs.util cimport get_c_string
+from pandas._libs import NaT
 
 {{py:
 
@@ -265,6 +266,7 @@ dtypes = [('Float64', 'float64', True, 'np.nan'),
 cdef class {{name}}HashTable(HashTable):
 
     def __cinit__(self, int64_t size_hint=1):
+        self.count_nan = 0
         self.table = kh_init_{{dtype}}()
         if size_hint is not None:
             size_hint = min(size_hint, _SIZE_HINT_LIMIT)
@@ -328,12 +330,14 @@ cdef class {{name}}HashTable(HashTable):
         cdef:
             Py_ssize_t i, n = len(values)
             int ret = 0
-            {{dtype}}_t val
+            {{dtype}}_t val, nan = NaT
             khiter_t k
 
         with nogil:
             for i in range(n):
                 val = values[i]
+                if val == nan:
+                    self.count_nan += 1
                 k = kh_put_{{dtype}}(self.table, val, &ret)
                 self.table.vals[k] = i
 
