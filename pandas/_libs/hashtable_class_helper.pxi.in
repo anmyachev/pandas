@@ -10,7 +10,6 @@ WARNING: DO NOT edit .pxi FILE directly, .pxi is generated from .pxi.in
 # ----------------------------------------------------------------------
 
 from pandas._libs.tslibs.util cimport get_c_string
-from pandas._libs import NaT
 
 {{py:
 
@@ -330,7 +329,7 @@ cdef class {{name}}HashTable(HashTable):
         cdef:
             Py_ssize_t i, n = len(values)
             int ret = 0
-            {{dtype}}_t val, nan = NaT
+            {{dtype}}_t val, nan = {{default_na_value}}
             khiter_t k
 
         with nogil:
