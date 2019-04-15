@@ -605,6 +605,7 @@ def to_datetime(arg, errors='raise', dayfirst=False, yearfirst=False,
     elif isinstance(arg, ABCIndexClass):
         cache_array = _maybe_cache(arg, format, cache, convert_listlike)
         if not cache_array.empty:
+            errors  = 'ignore' if not utc else errors
             result = _convert_and_box_cache(arg, cache_array, box, errors,
                                             name=arg.name)
         else:
@@ -613,6 +614,7 @@ def to_datetime(arg, errors='raise', dayfirst=False, yearfirst=False,
     elif is_list_like(arg):
         cache_array = _maybe_cache(arg, format, cache, convert_listlike)
         if not cache_array.empty:
+            errors  = 'ignore' if not utc else errors
             result = _convert_and_box_cache(arg, cache_array, box, errors)
         else:
             result = convert_listlike(arg, box, format)
