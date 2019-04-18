@@ -3168,15 +3168,21 @@ def _make_date_converter(date_parser=None, dayfirst=False,
                     box=False,
                     dayfirst=dayfirst,
                     errors='ignore',
-                    infer_datetime_format=infer_datetime_format
+                    infer_datetime_format=infer_datetime_format,
+                    cache=True
                 )
             except ValueError:
                 return tools.to_datetime(
-                    parsing.try_parse_dates(strs, dayfirst=dayfirst))
+                    parsing.try_parse_dates(strs, dayfirst=dayfirst),
+                    cache=True
+                )
         else:
             try:
                 result = tools.to_datetime(
-                    date_parser(*date_cols), errors='ignore')
+                    date_parser(*date_cols),
+                    errors='ignore',
+                    cache=True
+                )
                 if isinstance(result, datetime.datetime):
                     raise Exception('scalar parser')
                 return result
@@ -3186,7 +3192,9 @@ def _make_date_converter(date_parser=None, dayfirst=False,
                         parsing.try_parse_dates(_concat_date_cols(date_cols),
                                                 parser=date_parser,
                                                 dayfirst=dayfirst),
-                        errors='ignore')
+                        errors='ignore',
+                        cache=True
+                    )
                 except Exception:
                     return generic_parser(date_parser, *date_cols)
 
