@@ -57,7 +57,7 @@ from pandas._libs.tslibs.nattype import NaT
 from pandas._libs.tslibs.conversion cimport convert_to_tsobject
 from pandas._libs.tslibs.timedeltas cimport convert_to_timedelta64
 from pandas._libs.tslibs.timezones cimport get_timezone, tz_compare
-
+from pandas.compat import string_types
 from pandas._libs.missing cimport (
     checknull, isnaobj, is_null_datetime64, is_null_timedelta64, is_null_period
 )
@@ -2378,7 +2378,7 @@ cdef inline object convert_to_unicode(object item,
             if float_item == 0.0 or float_item != float_item:
                 do_convert = 0
 
-    if do_convert and not isinstance(item, str):
+    if do_convert and not isinstance(item, string_types):
         item = PyObject_Str(item)
 
     return item

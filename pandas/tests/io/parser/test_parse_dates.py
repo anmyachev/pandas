@@ -6,7 +6,6 @@ parsers defined in parsers.py
 """
 
 from datetime import date, datetime
-from io import StringIO
 
 from dateutil.parser import parse as du_parse
 from hypothesis import given, settings, strategies as st
@@ -17,7 +16,8 @@ import pytz
 from pandas._libs.tslib import Timestamp
 from pandas._libs.tslibs import parsing
 from pandas._libs.tslibs.parsing import parse_datetime_string
-from pandas.compat import is_platform_windows, lrange, parse_date
+from pandas.compat import (is_platform_windows, lrange,
+                           parse_date, StringIO, PY2)
 from pandas.compat.numpy import np_array_datetime64_compat
 
 import pandas as pd
@@ -32,7 +32,7 @@ import pandas.io.parsers as parsers
 _DEFAULT_DATETIME = datetime(1, 1, 1)
 
 # Strategy for hypothesis
-if is_platform_windows():
+if is_platform_windows() or PY2:
     date_strategy = st.datetimes(min_value=datetime(1900, 1, 1))
 else:
     date_strategy = st.datetimes()
@@ -197,7 +197,6 @@ def test_multiple_date_cols_int_cast(all_parsers):
             "KORD,19990127, 23:00:00, 22:56:00, -0.5900")
     parse_dates = {"actual": [1, 2], "nominal": [1, 3]}
     parser = all_parsers
-
     result = parser.read_csv(StringIO(data), header=None,
                              date_parser=conv.parse_date_time,
                              parse_dates=parse_dates, prefix="X")

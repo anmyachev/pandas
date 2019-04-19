@@ -1692,7 +1692,6 @@ double precise_xstrtod(const char *str, char **endptr, char decimal,
     int max_digits = 17;
     int n;
 
-    if (maybe_int != NULL) *maybe_int = 1;
     // Cache powers of 10 in memory.
     static double e[] = {
         1.,    1e1,   1e2,   1e3,   1e4,   1e5,   1e6,   1e7,   1e8,   1e9,
@@ -1727,6 +1726,7 @@ double precise_xstrtod(const char *str, char **endptr, char decimal,
         1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299,
         1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308};
 
+    if (maybe_int != NULL) *maybe_int = 1;
     // Skip leading whitespace.
     while (isspace_ascii(*p)) p++;
 

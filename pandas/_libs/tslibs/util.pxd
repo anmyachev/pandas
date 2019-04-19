@@ -14,6 +14,29 @@ cdef extern from *:
     object char_to_string(const char* data)
 
 
+cdef extern from *:
+    """
+    #if PY_VERSION_HEX >= 0x03000000
+    #define PyBytes_AsStringAndSize(py_string, buffer, length) \
+        PyBytes_AsStringAndSize(py_string, buffer, length)
+
+    #define PyUnicode_AsUTF8AndSize(py_string, buffer, length) \
+        buffer = PyUnicode_AsUTF8AndSize(py_string, length)
+
+    #else
+    #define PyBytes_AsStringAndSize(py_string, buffer, length) \
+        PyString_AsStringAndSize(py_string, buffer, length)
+
+    #define PyUnicode_AsUTF8AndSize(py_string, buffer, length) \
+        do {                                                   \
+            buffer = PyUnicode_AS_DATA(py_string);             \
+            *length = PyUnicode_GET_SIZE(py_string);           \
+        } while(0)
+    #endif
+    """
+    void PyUnicode_AsUTF8AndSize(object py_string, const char* buffer, Py_ssize_t* length)
+    void PyBytes_AsStringAndSize(object py_string, char** buffer, Py_ssize_t* length)
+
 cdef extern from "Python.h":
     # Note: importing extern-style allows us to declare these as nogil
     # functions, whereas `from cpython cimport` does not.
@@ -23,15 +46,6 @@ cdef extern from "Python.h":
     bint PyFloat_Check(object obj) nogil
     bint PyComplex_Check(object obj) nogil
     bint PyObject_TypeCheck(object obj, PyTypeObject* type) nogil
-
-    # Note that following functions can potentially raise an exception,
-    # thus they cannot be declared 'nogil'. Also PyUnicode_AsUTF8AndSize() can
-    # potentially allocate memory inside in unlikely case of when underlying
-    # unicode object was stored as non-utf8 and utf8 wasn't requested before.
-    bint PyBytes_AsStringAndSize(object obj, char** buf,
-                                 Py_ssize_t* length) except -1
-    const char* PyUnicode_AsUTF8AndSize(object obj,
-                                        Py_ssize_t* length) except NULL
 
 from numpy cimport int64_t, float64_t
 
@@ -243,7 +257,7 @@ cdef inline bint is_nan(object val):
 
 
 cdef inline const char* get_c_string_buf_and_size(object py_string,
-                                                  Py_ssize_t *length):
+                                                  Py_ssize_t *length) except NULL:
     """
     Extract internal char* buffer of unicode or bytes object `py_string` with
     getting length of this internal buffer saved in `length`.
@@ -263,10 +277,10 @@ cdef inline const char* get_c_string_buf_and_size(object py_string,
     buf : const char*
     """
     cdef:
-        const char *buf
+        const char *buf = NULL
 
     if PyUnicode_Check(py_string):
-        buf = PyUnicode_AsUTF8AndSize(py_string, length)
+        PyUnicode_AsUTF8AndSize(py_string, buf, length)
     else:
         PyBytes_AsStringAndSize(py_string, <char**>&buf, length)
     return buf
