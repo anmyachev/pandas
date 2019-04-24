@@ -180,7 +180,6 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
 
     @classmethod
     def _from_sequence(cls, scalars, dtype=None, copy=False):
-        # type: (Sequence[Optional[Period]], PeriodDtype, bool) -> PeriodArray
         if dtype:
             freq = dtype.freq
         else:
@@ -243,7 +242,6 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
     # DatetimeLike Interface
 
     def _unbox_scalar(self, value):
-        # type: (Union[Period, NaTType]) -> int
         if value is NaT:
             return value.value
         elif isinstance(value, self._scalar_type):
@@ -255,7 +253,6 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
                              .format(val=value))
 
     def _scalar_from_string(self, value):
-        # type: (str) -> Period
         return Period(value, freq=self.freq)
 
     def _check_compatible_with(self, other):
@@ -536,10 +533,9 @@ class PeriodArray(dtl.DatetimeLikeArrayMixin, dtl.DatelikeOps):
     @Appender(dtl.DatetimeLikeArrayMixin._addsub_int_array.__doc__)
     def _addsub_int_array(
             self,
-            other,   # type: Union[Index, ExtensionArray, np.ndarray[int]]
-            op      # type: Callable[Any, Any]
+            other,
+            op
     ):
-        # type: (...) -> PeriodArray
 
         assert op in [operator.add, operator.sub]
         if op is operator.sub:
@@ -710,7 +706,6 @@ def _raise_on_incompatible(left, right):
 # Constructor Helpers
 
 def period_array(data, freq=None, copy=False):
-    # type: (Sequence[Optional[Period]], Optional[Tick]) -> PeriodArray
     """
     Construct a new PeriodArray from a sequence of Period scalars.
 

@@ -419,10 +419,10 @@ class TestSeriesRank(TestData):
     ([1, 1, 3, 3, 5, 5], [1. / 3, 1. / 3, 2. / 3, 2. / 3, 3. / 3, 3. / 3]),
     ([-5, -4, -3, -2, -1], [1. / 5, 2. / 5, 3. / 5, 4. / 5, 5. / 5])])
 def test_rank_dense_pct(dtype, ser, exp):
-        s = Series(ser).astype(dtype)
-        result = s.rank(method='dense', pct=True)
-        expected = Series(exp).astype(result.dtype)
-        assert_series_equal(result, expected)
+    s = Series(ser).astype(dtype)
+    result = s.rank(method='dense', pct=True)
+    expected = Series(exp).astype(result.dtype)
+    assert_series_equal(result, expected)
 
 
 @pytest.mark.parametrize('dtype', ['O', 'f8', 'i8'])
@@ -437,10 +437,10 @@ def test_rank_dense_pct(dtype, ser, exp):
     ([1, 1, 3, 3, 5, 5], [1. / 6, 1. / 6, 3. / 6, 3. / 6, 5. / 6, 5. / 6]),
     ([-5, -4, -3, -2, -1], [1. / 5, 2. / 5, 3. / 5, 4. / 5, 5. / 5])])
 def test_rank_min_pct(dtype, ser, exp):
-        s = Series(ser).astype(dtype)
-        result = s.rank(method='min', pct=True)
-        expected = Series(exp).astype(result.dtype)
-        assert_series_equal(result, expected)
+    s = Series(ser).astype(dtype)
+    result = s.rank(method='min', pct=True)
+    expected = Series(exp).astype(result.dtype)
+    assert_series_equal(result, expected)
 
 
 @pytest.mark.parametrize('dtype', ['O', 'f8', 'i8'])
@@ -455,10 +455,10 @@ def test_rank_min_pct(dtype, ser, exp):
     ([1, 1, 3, 3, 5, 5], [2. / 6, 2. / 6, 4. / 6, 4. / 6, 6. / 6, 6. / 6]),
     ([-5, -4, -3, -2, -1], [1. / 5, 2. / 5, 3. / 5, 4. / 5, 5. / 5])])
 def test_rank_max_pct(dtype, ser, exp):
-        s = Series(ser).astype(dtype)
-        result = s.rank(method='max', pct=True)
-        expected = Series(exp).astype(result.dtype)
-        assert_series_equal(result, expected)
+    s = Series(ser).astype(dtype)
+    result = s.rank(method='max', pct=True)
+    expected = Series(exp).astype(result.dtype)
+    assert_series_equal(result, expected)
 
 
 @pytest.mark.parametrize('dtype', ['O', 'f8', 'i8'])
@@ -474,10 +474,10 @@ def test_rank_max_pct(dtype, ser, exp):
      [1.5 / 6, 1.5 / 6, 3.5 / 6, 3.5 / 6, 5.5 / 6, 5.5 / 6]),
     ([-5, -4, -3, -2, -1], [1. / 5, 2. / 5, 3. / 5, 4. / 5, 5. / 5])])
 def test_rank_average_pct(dtype, ser, exp):
-        s = Series(ser).astype(dtype)
-        result = s.rank(method='average', pct=True)
-        expected = Series(exp).astype(result.dtype)
-        assert_series_equal(result, expected)
+    s = Series(ser).astype(dtype)
+    result = s.rank(method='average', pct=True)
+    expected = Series(exp).astype(result.dtype)
+    assert_series_equal(result, expected)
 
 
 @pytest.mark.parametrize('dtype', ['f8', 'i8'])
@@ -492,15 +492,15 @@ def test_rank_average_pct(dtype, ser, exp):
     ([1, 1, 3, 3, 5, 5], [1. / 6, 2. / 6, 3. / 6, 4. / 6, 5. / 6, 6. / 6]),
     ([-5, -4, -3, -2, -1], [1. / 5, 2. / 5, 3. / 5, 4. / 5, 5. / 5])])
 def test_rank_first_pct(dtype, ser, exp):
-        s = Series(ser).astype(dtype)
-        result = s.rank(method='first', pct=True)
-        expected = Series(exp).astype(result.dtype)
-        assert_series_equal(result, expected)
+    s = Series(ser).astype(dtype)
+    result = s.rank(method='first', pct=True)
+    expected = Series(exp).astype(result.dtype)
+    assert_series_equal(result, expected)
 
 
 @pytest.mark.single
 def test_pct_max_many_rows():
-        # GH 18271
-        s = Series(np.arange(2**24 + 1))
-        result = s.rank(pct=True).max()
-        assert result == 1
+    # GH 18271
+    s = Series(np.arange(2**24 + 1))
+    result = s.rank(pct=True).max()
+    assert result == 1

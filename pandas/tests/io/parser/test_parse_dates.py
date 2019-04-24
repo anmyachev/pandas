@@ -16,8 +16,8 @@ import pytz
 from pandas._libs.tslib import Timestamp
 from pandas._libs.tslibs import parsing
 from pandas._libs.tslibs.parsing import parse_datetime_string
-from pandas.compat import (is_platform_windows, lrange,
-                           parse_date, StringIO, PY2)
+from pandas.compat import (
+    PY2, StringIO, is_platform_windows, lrange, parse_date)
 from pandas.compat.numpy import np_array_datetime64_compat
 
 import pandas as pd

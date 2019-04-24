@@ -58,7 +58,6 @@ class AttributesMixin(object):
 
     @property
     def _scalar_type(self):
-        # type: () -> Union[type, Tuple[type]]
         """The scalar associated with this datelike
 
         * PeriodArray : Period
@@ -68,7 +67,6 @@ class AttributesMixin(object):
         raise AbstractMethodError(self)
 
     def _scalar_from_string(self, value):
-        # type: (str) -> Union[Period, Timestamp, Timedelta, NaTType]
         """
         Construct a scalar type from a string.
 
@@ -89,7 +87,6 @@ class AttributesMixin(object):
         raise AbstractMethodError(self)
 
     def _unbox_scalar(self, value):
-        # type: (Union[Period, Timestamp, Timedelta, NaTType]) -> int
         """
         Unbox the integer value of a scalar `value`.
 
@@ -109,7 +106,6 @@ class AttributesMixin(object):
         raise AbstractMethodError(self)
 
     def _check_compatible_with(self, other):
-        # type: (Union[Period, Timestamp, Timedelta, NaTType]) -> None
         """
         Verify that `self` and `other` are compatible.
 
@@ -350,7 +346,6 @@ class DatetimeLikeArrayMixin(ExtensionOpsMixin,
 
     @property
     def asi8(self):
-        # type: () -> ndarray
         """
         Integer representation of the values.
 
@@ -460,10 +455,9 @@ class DatetimeLikeArrayMixin(ExtensionOpsMixin,
 
     def __setitem__(
             self,
-            key,    # type: Union[int, Sequence[int], Sequence[bool], slice]
-            value,  # type: Union[NaTType, Scalar, Sequence[Scalar]]
+            key,
+            value,
     ):
-        # type: (...) -> None
         # I'm fudging the types a bit here. The "Scalar" above really depends
         # on type(self). For PeriodArray, it's Period (or stuff coercible
         # to a period in from_sequence). For DatetimeArray, it's Timestamp...
