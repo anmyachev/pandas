@@ -35,8 +35,10 @@ cdef extern from *:
         } while(0)
     #endif
     """
-    void PyUnicode_AsUTF8AndSize(object py_string, const char* buffer, Py_ssize_t* length)
-    void PyBytes_AsStringAndSize(object py_string, char** buffer, Py_ssize_t* length)
+    void PyUnicode_AsUTF8AndSize(object py_string,
+                                 const char* buffer, Py_ssize_t* length)
+    void PyBytes_AsStringAndSize(object py_string,
+                                 char** buffer, Py_ssize_t* length)
 
 cdef extern from "Python.h":
     # Note: importing extern-style allows us to declare these as nogil
@@ -257,8 +259,8 @@ cdef inline bint is_nan(object val):
     return is_complex_object(val) and val != val
 
 
-cdef inline const char* get_c_string_buf_and_size(object py_string,
-                                                  Py_ssize_t *length) except NULL:
+cdef inline const char* get_c_string_buf_and_size(
+    object py_string, Py_ssize_t *length) except NULL:
     """
     Extract internal char* buffer of unicode or bytes object `py_string` with
     getting length of this internal buffer saved in `length`.

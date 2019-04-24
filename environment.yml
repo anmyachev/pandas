@@ -21,7 +21,8 @@ dependencies:
   - moto
   - pytest>=4.0
   - sphinx
-  - numpydoc
+  - numpydoc>=0.9.0
+  - pip
 
   # optional
   - beautifulsoup4>=4.2.1

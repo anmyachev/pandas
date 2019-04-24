@@ -1015,7 +1015,7 @@ class TestPanel(PanelTests, CheckIndexing, SafeForLongAndSparse,
     def test_constructor_fails_with_not_3d_input(self):
         msg = "The number of dimensions required is 3"
         with pytest.raises(ValueError, match=msg):
-                Panel(np.random.randn(10, 2))
+            Panel(np.random.randn(10, 2))
 
     def test_consolidate(self):
         assert self.panel._data.is_consolidated()

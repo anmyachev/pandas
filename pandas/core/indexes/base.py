@@ -3608,7 +3608,7 @@ class Index(IndexOpsMixin, PandasObject):
     @property
     def values(self):
         """
-        Return an array representing the data in the Index.
+        Return the underlying data as an ndarray.
 
         .. warning::
 
@@ -3624,14 +3624,11 @@ class Index(IndexOpsMixin, PandasObject):
         --------
         Index.array : Reference to the underlying data.
         Index.to_numpy : A NumPy array representing the underlying data.
-
-        Return the underlying data as an ndarray.
         """
         return self._data.view(np.ndarray)
 
     @property
     def _values(self):
-        # type: () -> Union[ExtensionArray, Index, np.ndarray]
         # TODO(EA): remove index types as they become extension arrays
         """
         The best array representation.
