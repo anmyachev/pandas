@@ -59,7 +59,7 @@ from pandas._libs.tslibs.nattype import NaT
 from pandas._libs.tslibs.conversion cimport convert_to_tsobject
 from pandas._libs.tslibs.timedeltas cimport convert_to_timedelta64
 from pandas._libs.tslibs.timezones cimport get_timezone, tz_compare
-
+from pandas.compat import string_types
 from pandas._libs.missing cimport (
     checknull, isnaobj, is_null_datetime64, is_null_timedelta64, is_null_period
 )

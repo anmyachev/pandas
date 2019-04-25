@@ -184,7 +184,6 @@ def test_multiple_date_cols_int_cast(all_parsers):
             "KORD,19990127, 23:00:00, 22:56:00, -0.5900")
     parse_dates = {"actual": [1, 2], "nominal": [1, 3]}
     parser = all_parsers
-
     result = parser.read_csv(StringIO(data), header=None,
                              date_parser=conv.parse_date_time,
                              parse_dates=parse_dates, prefix="X")
