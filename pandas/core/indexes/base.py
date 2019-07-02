@@ -2809,7 +2809,7 @@ class Index(IndexOpsMixin, PandasObject):
     @Appender(_index_shared_docs['get_indexer'] % _index_doc_kwargs)
     def get_indexer(self, target, method=None, limit=None, tolerance=None):
         method = missing.clean_reindex_fill_method(method)
-        target = ensure_index(target)
+        target = ensure_index(target, dtype=self.dtype)
         if tolerance is not None:
             tolerance = self._convert_tolerance(tolerance, target)
 
@@ -5449,7 +5449,7 @@ def ensure_index_from_sequences(sequences, names=None):
         return MultiIndex.from_arrays(sequences, names=names)
 
 
-def ensure_index(index_like, copy=False):
+def ensure_index(index_like, copy=False, dtype=None):
     """
     Ensure that we have an index from some index-like object.
 
@@ -5484,7 +5484,7 @@ def ensure_index(index_like, copy=False):
             index_like = index_like.copy()
         return index_like
     if hasattr(index_like, 'name'):
-        return Index(index_like, name=index_like.name, copy=copy)
+        return Index(index_like, name=index_like.name, copy=copy, dtype=dtype)
 
     if is_iterator(index_like):
         index_like = list(index_like)
@@ -5509,7 +5509,7 @@ def ensure_index(index_like, copy=False):
             from copy import copy
             index_like = copy(index_like)
 
-    return Index(index_like)
+    return Index(index_like, dtype=dtype)
 
 
 def _ensure_has_len(seq):

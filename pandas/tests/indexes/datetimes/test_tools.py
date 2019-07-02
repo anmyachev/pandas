@@ -520,11 +520,63 @@ class TestToDatetime:
         result = pd.to_datetime(arr, cache=cache)
         tm.assert_index_equal(result, expected)
 
+    @pytest.mark.parametrize('utc', (True, False))
     @pytest.mark.parametrize('errors', ('ignore', 'coerce', 'raise'))
     @pytest.mark.parametrize('suffix', ([], ['foo']))
     @pytest.mark.parametrize('convertor', (lambda x: x, str))
     @given(date1=datetimes(timezones=timezones()),
            date2=datetimes(timezones=timezones()))
+    def test_to_datetime_cache_invariance(self, date1, date2, suffix,
+                                          errors, convertor, utc):
+        # prepare a list of dates to parse with some duplicates
+        # and possible invalid string
+        arg = [convertor(date1), convertor(date2)] * 5 + suffix
+
+        def _get_answer(cache):
+            try:
+                return pd.to_datetime(arg, cache=cache, errors=errors, utc=utc)
+            except ValueError as err:
+                return err.args
+
+        cache_on = _get_answer(cache=True)
+        cache_off = _get_answer(cache=False)
+        tm.assert_almost_equal(cache_on, cache_off)
+
+
+    '''@pytest.mark.parametrize('utc', (True,))
+    @pytest.mark.parametrize('errors', ('coerce',))
+    @pytest.mark.parametrize('suffix', ([],))
+    @pytest.mark.parametrize('convertor', (lambda x: x,))
+    @pytest.mark.parametrize('date1', (
+        datetime(2000, 1, 1, 0, 0, tzinfo=pytz.timezone('UTC')),))
+    @pytest.mark.parametrize('date2', (
+        datetime(1677, 1, 1, 0, 0, tzinfo=pytz.timezone('UTC')),))
+    def test_to_datetime_cache_invariance(self, date1, date2, suffix,
+                                          errors, convertor, utc):
+        # prepare a list of dates to parse with some duplicates
+        # and possible invalid string
+        arg = [convertor(date1), convertor(date2)] * 5 + suffix
+
+        def _get_answer(cache):
+            try:
+                return pd.to_datetime(arg, cache=cache, errors=errors, utc=utc)
+            except ValueError as err:
+                return err.args
+        # import pdb;pdb.set_trace()
+        cache_on = _get_answer(cache=True)
+        print(cache_on)
+        cache_off = _get_answer(cache=False)
+        print(cache_off)
+        tm.assert_almost_equal(cache_on, cache_off)'''
+
+
+    '''@pytest.mark.parametrize('errors', ('ignore', 'coerce', 'raise'))
+    @pytest.mark.parametrize('suffix', ([],))
+    @pytest.mark.parametrize('convertor', (lambda x: x,))
+    @pytest.mark.parametrize('date1', (
+        datetime(2000, 1, 1, 0, 0, tzinfo=pytz.timezone('UTC')),))
+    @pytest.mark.parametrize('date2', (
+        datetime(2000, 1, 1, 0, 0, tzinfo=pytz.timezone('Etc/GMT+0')),))
     def test_to_datetime_cache_invariance(self, date1, date2, suffix,
                                           errors, convertor):
         # prepare a list of dates to parse with some duplicates
@@ -536,10 +588,14 @@ class TestToDatetime:
                 return pd.to_datetime(arg, cache=cache, errors=errors)
             except ValueError as err:
                 return err.args
-
+        #import pdb;pdb.set_trace()
         cache_on = _get_answer(cache=True)
-        cache_off = _get_answer(cache=False)
-        tm.assert_almost_equal(cache_on, cache_off)
+        # cache_off = _get_answer(cache=False)
+        cache_off = pd.to_datetime(arg, cache=False, errors=errors)
+        # print(cache_on)
+        # print(cache_off)
+        tm.assert_almost_equal(cache_on, cache_off)'''
+
 
     @pytest.mark.parametrize('cache', [True, False])
     def test_to_datetime_tz_pytz(self, cache):

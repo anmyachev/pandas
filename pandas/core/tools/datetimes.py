@@ -66,11 +66,12 @@ def _maybe_cache(arg, format, cache, convert_listlike):
     if cache:
         # Perform a quicker unique check
         from pandas import Index
-        unique_dates = Index(arg).unique()
+
+        # dtype=object is using to avoid extra conversion
+        unique_dates = Index(arg, dtype=object).unique()  # don't changed
         if len(unique_dates) < len(arg):
-            cache_dates = convert_listlike(unique_dates.to_numpy(),
-                                           True, format)
-            cache_array = Series(cache_dates, index=unique_dates)
+            cache_dates = convert_listlike(unique_dates, True, format)
+            cache_array = Series(cache_dates, index=unique_dates, dtype=cache_dates.dtype)
     return cache_array
 
 
@@ -130,7 +131,7 @@ def _convert_and_box_cache(
         - ndarray if box=False
     """
     from pandas import Series
-    result = Series(arg).map(cache_array)
+    result = Series(arg, dtype=object).map(cache_array)
     if box:
         return _box_as_indexlike(result, tz=None, name=name)
     return result.values
